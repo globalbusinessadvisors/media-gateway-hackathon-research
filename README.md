@@ -35,7 +35,7 @@ Media Gateway is a comprehensive architecture blueprint for a unified TV content
 - **Cross-Device Sync** — Real-time watchlist and progress synchronization via PubNub
 - **Privacy-First Design** — Federated learning with differential privacy for personalization
 - **Rust-Native Performance** — 100% Rust implementation for reliability and speed
-- **CLI-First Experience** — Full-featured terminal interface with rich TUI
+- **Developer CLI** — Full-featured terminal interface for platform operators (not end-users)
 - **Cloud-Native Deployment** — GKE Autopilot and Cloud Run on Google Cloud Platform
 
 ---
@@ -46,11 +46,11 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
+│                     DEVELOPER / OPERATOR TOOLS                              │
+│         CLI (Rust TUI) │ hackathon-tv5 CLI │ ARW Chrome Extension          │
+├─────────────────────────────────────────────────────────────────────────────┤
 │                       LAYER 4: END-USER EXPERIENCE                          │
-│    ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
-│    │   CLI    │  │   Web    │  │  Mobile  │  │    TV    │                  │
-│    │(Rust TUI)│  │(Next.js) │  │(iOS/Droid)│ │(Tizen/LG)│                  │
-│    └──────────┘  └──────────┘  └──────────┘  └──────────┘                  │
+│         Web App (Next.js) │ Mobile (iOS/Android) │ TV (Tizen/LG)           │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                       LAYER 3: CONSOLIDATION                                │
 │    Global Metadata │ Availability Index │ Rights Engine │ Personalization  │
@@ -59,7 +59,7 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 │    Multi-Agent Orchestration │ Recommendation Engine │ Semantic Search     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                       LAYER 1: MICRO-REPOSITORIES                           │
-│    MCP Connectors │ Normalizers │ Entity Resolver │ Auth │ Device Sync     │
+│    MCP Connectors │ Normalizers │ Entity Resolver │ Auth │ MCP Server      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                            DATA LAYER                                       │
 │              Ruvector (Hypergraph + Vector + GNN) │ PubNub                 │

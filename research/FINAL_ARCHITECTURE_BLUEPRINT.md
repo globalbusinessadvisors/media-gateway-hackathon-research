@@ -49,11 +49,19 @@ This document presents the complete architecture blueprint for a **global, cross
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
+│                      DEVELOPER / OPERATOR TOOLS                                  │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐     │
+│  │   Media Gateway CLI │  │  hackathon-tv5 CLI  │  │   ARW Chrome Ext    │     │
+│  │     (Rust TUI)      │  │  (npx agentics)     │  │    (Inspector)      │     │
+│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘     │
+└───────────────────────────────────┬─────────────────────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼─────────────────────────────────────────────┐
 │                           LAYER 4: END-USER EXPERIENCE                           │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐            │
-│  │ Unified CLI │  │   Web App   │  │ Mobile Apps │  │   TV Apps   │            │
-│  │ (Rust TUI)  │  │  (Next.js)  │  │ (iOS/Android)│  │(Samsung/LG) │            │
-│  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘            │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐                 │
+│  │     Web App     │  │   Mobile Apps   │  │     TV Apps     │                 │
+│  │    (Next.js)    │  │  (iOS/Android)  │  │  (Samsung/LG)   │                 │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘                 │
 └───────────────────────────────────┬─────────────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼─────────────────────────────────────────────┐
@@ -83,8 +91,8 @@ This document presents the complete architecture blueprint for a **global, cross
 ┌───────────────────────────────────▼─────────────────────────────────────────────┐
 │                     LAYER 1: MICRO-REPOSITORY ECOSYSTEM                         │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐ │
-│  │Ingestion│  │Metadata │  │ Entity  │  │ Rights  │  │Identity │  │  CLI    │ │
-│  │ Modules │  │Normalizer│  │Resolver │  │Validator│  │  /Auth  │  │  Core   │ │
+│  │Ingestion│  │Metadata │  │ Entity  │  │ Rights  │  │Identity │  │  MCP    │ │
+│  │ Modules │  │Normalizer│  │Resolver │  │Validator│  │  /Auth  │  │ Server  │ │
 │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘ │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐                                         │
 │  │ Device  │  │Semantic │  │Simulation│                                         │
@@ -421,7 +429,19 @@ impl GlobalMetadataFabric {
 
 ## 5. Layer-4: End-User Experience
 
-### 5.1 Unified CLI Architecture
+Layer 4 provides consumer-facing applications for end-users. **Note:** The CLI tools (Media Gateway CLI, hackathon-tv5 CLI) are **developer/operator tools** for platform management, not end-user interfaces. End-users interact through Web, Mobile, and TV applications.
+
+### 5.1 End-User Applications
+
+| Platform | Technology | Target Users |
+|----------|------------|--------------|
+| **Web App** | Next.js | Desktop/laptop users |
+| **Mobile Apps** | iOS (Swift), Android (Kotlin) | Smartphone users |
+| **TV Apps** | Samsung Tizen, LG webOS, Roku | Smart TV users |
+
+### 5.2 Developer/Operator CLI Architecture
+
+The CLI is designed for **developers and platform operators** to manage, debug, and operate the Media Gateway platform. It is NOT an end-user interface.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -476,7 +496,7 @@ impl GlobalMetadataFabric {
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 TUI Interface Design
+### 5.3 CLI TUI Interface (Developer/Operator View)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -2474,7 +2494,7 @@ User Query
 ## Appendix C: Key Differentiators
 
 1. **100% Rust Implementation**: Performance, safety, and consistency
-2. **Unified CLI**: Single interface for all operations across all devices
+2. **Developer CLI**: Powerful TUI for platform operators and developers
 3. **Privacy-First**: Federated learning, no PII collection
 4. **Hypergraph Power**: Complex multi-way relationships via Ruvector
 5. **Real-Time Sync**: Seamless cross-device experience via PubNub
