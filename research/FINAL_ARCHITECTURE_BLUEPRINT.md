@@ -9,6 +9,7 @@ This document presents the complete architecture blueprint for a **global, cross
 - **PubNub**: Real-time cross-device synchronization
 - **Claude-Flow**: Multi-agent orchestration with SPARC methodology
 - **Rust**: Primary implementation language (100%)
+- **Google Cloud Platform**: Production infrastructure (GKE Autopilot, Cloud Run, Cloud SQL)
 
 ---
 
@@ -30,7 +31,8 @@ This document presents the complete architecture blueprint for a **global, cross
 14. [Cross-Device Flow](#14-cross-device-flow)
 15. [CLI Structure](#15-cli-structure)
 16. [Integration with hackathon-tv5](#16-integration-with-hackathon-tv5)
-17. [Implementation Roadmap](#17-implementation-roadmap)
+17. [Google Cloud Platform Deployment](#17-google-cloud-platform-deployment)
+18. [Implementation Roadmap](#18-implementation-roadmap)
 
 ---
 
@@ -1473,7 +1475,498 @@ pub fn get_streaming_tools() -> Vec<MCPToolSchema> {
 
 ---
 
-## 17. Implementation Roadmap
+## 17. Google Cloud Platform Deployment
+
+### 17.1 Infrastructure Overview
+
+The system is designed for production deployment on **Google Cloud Platform**, leveraging managed services for scalability, security, and operational efficiency.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│                              GOOGLE CLOUD PLATFORM                                   │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
+│  │              GLOBAL LOAD BALANCER + CLOUD ARMOR                              │   │
+│  │                    (WAF + DDoS Protection)                                   │   │
+│  └──────────────────────────────┬──────────────────────────────────────────────┘   │
+│                                 │                                                   │
+│  ┌──────────────────────────────┼──────────────────────────────────────────────┐   │
+│  │                              ▼                                               │   │
+│  │  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐             │   │
+│  │  │   Cloud Run    │    │  GKE Autopilot │    │   Cloud Run    │             │   │
+│  │  │  (API Gateway) │    │ (15+ Services) │    │   (Webhooks)   │             │   │
+│  │  └────────────────┘    └────────────────┘    └────────────────┘             │   │
+│  │                              │                                               │   │
+│  │         ISTIO SERVICE MESH + WORKLOAD IDENTITY                              │   │
+│  └──────────────────────────────┼──────────────────────────────────────────────┘   │
+│                                 │                                                   │
+│  ┌──────────────────────────────┼──────────────────────────────────────────────┐   │
+│  │                              ▼                                               │   │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │   │
+│  │  │   Cloud SQL    │  │  Memorystore   │  │    Pub/Sub     │                 │   │
+│  │  │  PostgreSQL 15 │  │    Valkey      │  │    Topics      │                 │   │
+│  │  └────────────────┘  └────────────────┘  └────────────────┘                 │   │
+│  │                                                                              │   │
+│  │              PRIVATE VPC + PRIVATE SERVICE ACCESS                           │   │
+│  └──────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                      │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
+│  │  OBSERVABILITY: Cloud Logging │ Cloud Trace │ Cloud Monitoring               │   │
+│  └──────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                      │
+│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
+│  │  CI/CD: Cloud Build │ Artifact Registry │ Cloud Deploy │ Secret Manager     │   │
+│  └──────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                      │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.2 GCP Services Matrix
+
+| Service | Purpose | Configuration |
+|---------|---------|---------------|
+| **GKE Autopilot** | Container orchestration for 15+ microservices | Regional, Workload Identity, Istio service mesh |
+| **Cloud Run** | Stateless API gateway and webhook handlers | Auto-scaling 0-100, VPC connector, 80 concurrency |
+| **Cloud SQL** | PostgreSQL 15 with HA | 4 vCPU, 16GB RAM, Private IP, PITR enabled |
+| **Memorystore** | Redis-compatible caching (Valkey) | 10GB, Standard HA, Read replicas |
+| **Pub/Sub** | Event streaming between services | Schema enforcement, Dead letter queues |
+| **Cloud Armor** | WAF and DDoS protection | Adaptive protection, Rate limiting (1000 req/min) |
+| **Secret Manager** | Credential management | Automatic rotation, Workload Identity access |
+| **Artifact Registry** | Container image storage | Vulnerability scanning, Cross-region replication |
+| **Cloud Build** | CI/CD pipeline | Multi-stage Rust builds with cargo-chef |
+| **Cloud Deploy** | Kubernetes deployment automation | Progressive rollouts, Canary deployments |
+
+### 17.3 Service Distribution
+
+**GKE Autopilot** hosts stateful microservices:
+- Layer 1: Ingestion, Auth Service, Sync Engine, Entity Resolver
+- Layer 2: Recommendation Engine, Agent Orchestrator, Semantic Search
+- Layer 3: Metadata Fabric, Availability Index, Rights Engine
+
+**Cloud Run** hosts stateless components:
+- API Gateway (public-facing, auto-scales to zero)
+- Webhook Handlers (Pub/Sub push subscriptions)
+- Batch Jobs (scheduled via Cloud Scheduler)
+
+### 17.4 GKE Autopilot Configuration
+
+```hcl
+resource "google_container_cluster" "media_gateway" {
+  name     = "media-gateway-cluster"
+  location = var.region
+
+  enable_autopilot = true
+
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+    master_ipv4_cidr_block  = "172.16.0.0/28"
+  }
+
+  addons_config {
+    http_load_balancing {
+      disabled = false
+    }
+    network_policy_config {
+      disabled = false
+    }
+  }
+
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  logging_config {
+    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+  }
+
+  monitoring_config {
+    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
+    managed_prometheus {
+      enabled = true
+    }
+  }
+}
+```
+
+### 17.5 Cloud Run API Gateway
+
+```hcl
+resource "google_cloud_run_v2_service" "api_gateway" {
+  name     = "api-gateway"
+  location = var.region
+
+  template {
+    scaling {
+      min_instance_count = 1
+      max_instance_count = 100
+    }
+
+    vpc_access {
+      connector = google_vpc_access_connector.connector.id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
+    containers {
+      image = "${var.artifact_registry}/api-gateway:${var.image_tag}"
+
+      resources {
+        limits = {
+          cpu    = "2"
+          memory = "1Gi"
+        }
+        cpu_idle = true
+      }
+
+      startup_probe {
+        http_get {
+          path = "/health"
+          port = 8080
+        }
+      }
+    }
+
+    service_account = google_service_account.api_gateway.email
+    max_instance_request_concurrency = 80
+  }
+}
+```
+
+### 17.6 Database and Caching
+
+**Cloud SQL PostgreSQL** (Primary Database):
+```hcl
+resource "google_sql_database_instance" "primary" {
+  name             = "media-gateway-db"
+  database_version = "POSTGRES_15"
+  region           = var.region
+
+  settings {
+    tier              = "db-custom-4-16384"
+    availability_type = "REGIONAL"
+    disk_size         = 200
+    disk_type         = "PD_SSD"
+
+    backup_configuration {
+      enabled                        = true
+      point_in_time_recovery_enabled = true
+      backup_retention_settings {
+        retained_backups = 30
+      }
+    }
+
+    ip_configuration {
+      ipv4_enabled    = false
+      private_network = google_compute_network.vpc.id
+    }
+
+    insights_config {
+      query_insights_enabled  = true
+      record_application_tags = true
+    }
+  }
+}
+```
+
+**Memorystore Valkey** (Redis-Compatible Cache):
+```hcl
+resource "google_redis_instance" "cache" {
+  name           = "media-gateway-cache"
+  tier           = "STANDARD_HA"
+  memory_size_gb = 10
+  region         = var.region
+  redis_version  = "REDIS_7_2"
+
+  authorized_network      = google_compute_network.vpc.id
+  connect_mode            = "PRIVATE_SERVICE_ACCESS"
+  transit_encryption_mode = "SERVER_AUTHENTICATION"
+  auth_enabled            = true
+  replica_count           = 2
+  read_replicas_mode      = "READ_REPLICAS_ENABLED"
+}
+```
+
+### 17.7 Event Streaming with Pub/Sub
+
+```hcl
+# Content availability changes
+resource "google_pubsub_topic" "content_availability" {
+  name                       = "content-availability-changes"
+  message_retention_duration = "86400s"
+
+  schema_settings {
+    schema   = google_pubsub_schema.content_availability.id
+    encoding = "JSON"
+  }
+}
+
+# Pull subscription for GKE services
+resource "google_pubsub_subscription" "availability_processor" {
+  name  = "availability-processor"
+  topic = google_pubsub_topic.content_availability.name
+
+  ack_deadline_seconds         = 60
+  enable_exactly_once_delivery = true
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.dead_letter.id
+    max_delivery_attempts = 5
+  }
+}
+```
+
+### 17.8 Security Architecture
+
+**Workload Identity** (Keyless Authentication):
+```hcl
+resource "google_service_account" "layer1_sa" {
+  account_id   = "media-gateway-layer1"
+  display_name = "Media Gateway Layer 1 Services"
+}
+
+resource "google_service_account_iam_member" "layer1_workload_identity" {
+  service_account_id = google_service_account.layer1_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[media-gateway-layer1/layer1-ksa]"
+}
+```
+
+**Cloud Armor Security Policy**:
+```hcl
+resource "google_compute_security_policy" "api_policy" {
+  name = "media-gateway-api-policy"
+
+  adaptive_protection_config {
+    layer_7_ddos_defense_config {
+      enable = true
+    }
+  }
+
+  # XSS Protection
+  rule {
+    action   = "deny(403)"
+    priority = 200
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('xss-v33-stable')"
+      }
+    }
+  }
+
+  # SQL Injection Protection
+  rule {
+    action   = "deny(403)"
+    priority = 201
+    match {
+      expr {
+        expression = "evaluatePreconfiguredExpr('sqli-v33-stable')"
+      }
+    }
+  }
+
+  # Rate Limiting
+  rule {
+    action   = "rate_based_ban"
+    priority = 300
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config {
+        src_ip_ranges = ["*"]
+      }
+    }
+    rate_limit_options {
+      conform_action = "allow"
+      exceed_action  = "deny(429)"
+      enforce_on_key = "IP"
+      rate_limit_threshold {
+        count        = 1000
+        interval_sec = 60
+      }
+      ban_duration_sec = 600
+    }
+  }
+}
+```
+
+### 17.9 CI/CD Pipeline
+
+**Cloud Build Configuration** (cloudbuild.yaml):
+```yaml
+steps:
+  # Build Rust services in parallel
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-ingestion'
+    args: ['build', '-t', '${_ARTIFACT_REGISTRY}/ingestion-core:${SHORT_SHA}',
+           '-f', 'layer-1/ingestion/Dockerfile', '.']
+    waitFor: ['-']
+
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'build-recommendations'
+    args: ['build', '-t', '${_ARTIFACT_REGISTRY}/recommendation-engine:${SHORT_SHA}',
+           '-f', 'layer-2/recommendation-engine/Dockerfile', '.']
+    waitFor: ['-']
+
+  # Push images
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '--all-tags', '${_ARTIFACT_REGISTRY}/ingestion-core']
+    waitFor: ['build-ingestion']
+
+  # Deploy to GKE
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'deploy-gke'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        gcloud container clusters get-credentials media-gateway-cluster --region ${_REGION}
+        kubectl set image deployment/ingestion-core \
+          ingestion-core=${_ARTIFACT_REGISTRY}/ingestion-core:${SHORT_SHA} \
+          -n media-gateway-layer1
+    waitFor: ['push-images']
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: 3600s
+```
+
+**Rust Dockerfile** (Distroless):
+```dockerfile
+FROM rust:1.75-slim as builder
+WORKDIR /app
+RUN cargo install cargo-chef
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM rust:1.75-slim as cacher
+WORKDIR /app
+RUN cargo install cargo-chef
+COPY --from=builder /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+FROM rust:1.75-slim as final-builder
+WORKDIR /app
+COPY . .
+COPY --from=cacher /app/target target
+RUN cargo build --release
+
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=final-builder /app/target/release/service /app/service
+USER nonroot:nonroot
+EXPOSE 8080 50051
+ENTRYPOINT ["/app/service"]
+```
+
+### 17.10 Observability Stack
+
+**Cloud Logging + Monitoring**:
+```hcl
+# Log sink for BigQuery analytics
+resource "google_logging_project_sink" "bigquery_sink" {
+  name        = "media-gateway-logs-bq"
+  destination = "bigquery.googleapis.com/projects/${var.project_id}/datasets/${google_bigquery_dataset.logs.dataset_id}"
+  filter      = "resource.type=\"k8s_container\" AND resource.labels.namespace_name=~\"media-gateway-.*\""
+
+  bigquery_options {
+    use_partitioned_tables = true
+  }
+}
+
+# Error rate alert
+resource "google_monitoring_alert_policy" "high_error_rate" {
+  display_name = "High Error Rate - Media Gateway"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Error rate > 1%"
+    condition_threshold {
+      filter          = "metric.type=\"logging.googleapis.com/user/media-gateway/error-rate\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = 0.01
+      duration        = "300s"
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.email.id]
+}
+```
+
+### 17.11 Terraform Module Structure
+
+```
+terraform/
+├── environments/
+│   ├── dev/
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   └── terraform.tfvars
+│   ├── staging/
+│   └── prod/
+└── modules/
+    ├── gke/                 # GKE Autopilot cluster
+    ├── cloudrun/            # Cloud Run services
+    ├── database/            # Cloud SQL PostgreSQL
+    ├── cache/               # Memorystore Valkey
+    ├── pubsub/              # Pub/Sub topics and subscriptions
+    ├── security/            # Workload Identity, Cloud Armor, Secrets
+    ├── network/             # VPC, Subnets, Firewall
+    └── observability/       # Logging, Monitoring, Alerting
+```
+
+### 17.12 Cost Estimates
+
+| Component | Monthly Estimate |
+|-----------|-----------------|
+| GKE Autopilot (15 services, 2 replicas avg) | $800-1,200 |
+| Cloud Run (API Gateway + Webhooks) | $200-400 |
+| Cloud SQL (HA, 4 vCPU, 16GB) | $400-500 |
+| Memorystore (10GB HA) | $300-350 |
+| Pub/Sub (10M messages) | $50-100 |
+| Cloud Armor + Logging + Monitoring | $100-150 |
+| **Total** | **$1,850-2,700/month** |
+
+### 17.13 Quick Deployment Commands
+
+```bash
+# Initialize Terraform
+cd terraform/environments/dev
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+
+# Get GKE credentials
+gcloud container clusters get-credentials media-gateway-cluster --region us-central1
+
+# Deploy Kubernetes resources
+kubectl apply -f k8s/namespaces.yaml
+kubectl apply -f k8s/layer1/
+kubectl apply -f k8s/layer2/
+kubectl apply -f k8s/layer3/
+
+# Deploy Cloud Run
+gcloud run deploy api-gateway \
+  --image us-central1-docker.pkg.dev/PROJECT_ID/media-gateway/api-gateway:latest \
+  --region us-central1
+
+# Run Cloud Build
+gcloud builds submit --config cloudbuild.yaml
+
+# Check deployment status
+kubectl get pods -n media-gateway-layer1
+kubectl get pods -n media-gateway-layer2
+kubectl get pods -n media-gateway-layer3
+```
+
+> **Full GCP Deployment Documentation**: See [`GCP_DEPLOYMENT_ARCHITECTURE.md`](GCP_DEPLOYMENT_ARCHITECTURE.md) for complete Terraform modules, Kubernetes manifests, and operational procedures.
+
+---
+
+## 18. Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-4)
 - [ ] Set up multi-repo structure with Cargo workspace
@@ -1524,18 +2017,22 @@ pub fn get_streaming_tools() -> Vec<MCPToolSchema> {
 | Language | Rust | Primary implementation (100%) |
 | Data | Ruvector | Hypergraph + Vector + GNN |
 | Real-Time | PubNub | Cross-device sync |
-| Events | Apache Kafka | Event streaming |
-| Cache | Redis | Session/query cache |
+| Events | Google Pub/Sub | Event streaming |
+| Cache | Memorystore (Valkey) | Session/query cache |
+| Database | Cloud SQL PostgreSQL | Persistent storage |
 | Auth | Custom OAuth 2.0 | Authentication |
 | Agents | Claude-Flow | Multi-agent orchestration |
-| Search | Ruvector + Elasticsearch | Hybrid search |
+| Search | Ruvector + Semantic | Hybrid search |
 | ML | PyTorch (via tch) | Model serving |
-| Gateway | Kong/Envoy | API gateway |
-| Mesh | Linkerd | Service mesh |
-| Container | Kubernetes | Orchestration |
-| CI/CD | GitHub Actions | Automation |
-| Monitoring | Prometheus + Grafana | Observability |
-| Tracing | Jaeger | Distributed tracing |
+| Gateway | Cloud Run | API gateway |
+| Mesh | Istio | Service mesh |
+| Container | GKE Autopilot | Orchestration |
+| CI/CD | Cloud Build + Deploy | Automation |
+| Monitoring | Cloud Monitoring | Observability |
+| Tracing | Cloud Trace | Distributed tracing |
+| Security | Cloud Armor | WAF + DDoS |
+| Secrets | Secret Manager | Credential management |
+| Registry | Artifact Registry | Container storage |
 
 ---
 
@@ -1566,9 +2063,36 @@ pub fn get_streaming_tools() -> Vec<MCPToolSchema> {
 8. **MCP-Native**: Full Model Context Protocol integration
 9. **Multi-Agent Intelligence**: 9 specialized agents for complex queries
 10. **Explainable Recommendations**: Graph paths show "why"
+11. **Cloud-Native GCP**: Production-grade infrastructure with GKE Autopilot
+12. **Zero-Trust Security**: Workload Identity, Cloud Armor, private networking
 
 ---
 
-*Document Version: 1.0.0*
+## Appendix D: GCP Infrastructure Summary
+
+| Service | Configuration | Monthly Cost |
+|---------|---------------|--------------|
+| GKE Autopilot | 15 services, regional | $800-1,200 |
+| Cloud Run | API Gateway, 0-100 instances | $200-400 |
+| Cloud SQL | PostgreSQL 15, HA, 4 vCPU | $400-500 |
+| Memorystore | Valkey 10GB, HA, 2 replicas | $300-350 |
+| Pub/Sub | 10M messages/month | $50-100 |
+| Cloud Armor | WAF + DDoS, adaptive | $50 |
+| Secret Manager | 20 secrets | $5 |
+| Artifact Registry | 50GB images | $5 |
+| Cloud Logging | 100GB/month | $50 |
+| **Total** | | **$1,850-2,700** |
+
+**Key GCP Features Used:**
+- Workload Identity for keyless authentication
+- Private Service Access for database connectivity
+- VPC-native clusters with pod security policies
+- Managed Prometheus for metrics collection
+- Cloud Deploy for progressive rollouts
+- Binary Authorization for supply chain security
+
+---
+
+*Document Version: 1.1.0*
 *Last Updated: December 2025*
-*Authors: 9-Agent Architecture Swarm*
+*Authors: 9-Agent Architecture Swarm + GCP Integration*
