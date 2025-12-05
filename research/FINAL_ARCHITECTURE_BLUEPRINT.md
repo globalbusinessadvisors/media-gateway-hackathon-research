@@ -5,11 +5,18 @@
 This document presents the complete architecture blueprint for a **global, cross-platform TV discovery system** implemented entirely in **Rust**, operable through a **unified CLI**, and deployable across TVs, smartphones, and consumer devices. The system allows users to securely authenticate with streaming platforms via **OAuth2/PKCE** and **Device Authorization Grant** flows, with all platform integration occurring through **custom MCP connectors**.
 
 **Core Technologies:**
-- **Ruvector**: Hypergraph, vector, and GNN simulation engine
+- **Ruvector + SONA**: Hypergraph, vector, GNN, and Self-Optimizing Neural Architecture
 - **PubNub**: Real-time cross-device synchronization
 - **Claude-Flow**: Multi-agent orchestration with SPARC methodology
 - **Rust**: Primary implementation language (100%)
 - **Google Cloud Platform**: Production infrastructure (GKE Autopilot, Cloud Run, Cloud SQL)
+
+**SONA Intelligence Capabilities:**
+- **Runtime Adaptation**: Two-tier LoRA personalization without retraining
+- **Tiny Dancer**: FastGRNN semantic routing for optimal query dispatch
+- **39 Attention Mechanisms**: Dynamic selection for graphs, transformers, hyperbolic spaces
+- **ReasoningBank**: Persistent storage of learned reasoning patterns
+- **EWC++**: Elastic Weight Consolidation prevents catastrophic forgetting
 
 ---
 
@@ -32,7 +39,8 @@ This document presents the complete architecture blueprint for a **global, cross
 15. [CLI Structure](#15-cli-structure)
 16. [Integration with hackathon-tv5](#16-integration-with-hackathon-tv5)
 17. [Google Cloud Platform Deployment](#17-google-cloud-platform-deployment)
-18. [Implementation Roadmap](#18-implementation-roadmap)
+18. [SONA Intelligence Engine Integration](#18-sona-intelligence-engine-integration)
+19. [Implementation Roadmap](#19-implementation-roadmap)
 
 ---
 
@@ -1966,7 +1974,273 @@ kubectl get pods -n media-gateway-layer3
 
 ---
 
-## 18. Implementation Roadmap
+## 18. SONA Intelligence Engine Integration
+
+SONA (Self-Optimizing Neural Architecture) provides runtime adaptation capabilities without retraining, enabling personalized recommendations that evolve with user preferences.
+
+### 18.1 SONA Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                         SONA INTELLIGENCE ENGINE                                 │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────────────────────┐   │
+│  │                      SEMANTIC ROUTING LAYER                              │   │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐         │   │
+│  │  │  Tiny Dancer    │  │   Query Type    │  │   Confidence    │         │   │
+│  │  │  (FastGRNN)     │──│   Classifier    │──│    Router       │         │   │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘         │   │
+│  └─────────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                          │
+│  ┌───────────────────────────────────▼──────────────────────────────────────┐  │
+│  │                      ATTENTION SELECTION (39 MECHANISMS)                  │  │
+│  │  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐             │  │
+│  │  │   Core    │  │   Graph   │  │Specialized│  │Hyperbolic │             │  │
+│  │  │ MultiHead │  │ GraphRoPE │  │  Sparse   │  │  expMap   │             │  │
+│  │  │  Flash    │  │EdgeFeatured│ │  Cross    │  │  logMap   │             │  │
+│  │  │  Linear   │  │   Node    │  │  Kernel   │  │ mobiusAdd │             │  │
+│  │  └───────────┘  └───────────┘  └───────────┘  └───────────┘             │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                          │
+│  ┌───────────────────────────────────▼──────────────────────────────────────┐  │
+│  │                      RUNTIME ADAPTATION LAYER                             │  │
+│  │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐          │  │
+│  │  │   Two-Tier      │  │     EWC++       │  │  ReasoningBank  │          │  │
+│  │  │     LoRA        │  │   (Anti-forget) │  │    Storage      │          │  │
+│  │  │  (rank 4-16)    │  │                 │  │                 │          │  │
+│  │  └─────────────────┘  └─────────────────┘  └─────────────────┘          │  │
+│  └──────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 18.2 Core SONA Components
+
+| Component | Purpose | Integration Point |
+|-----------|---------|-------------------|
+| **Two-Tier LoRA** | Memory-efficient user personalization | Layer-3 Personalization Engine |
+| **EWC++** | Prevents catastrophic forgetting | Model update pipeline |
+| **Tiny Dancer** | FastGRNN semantic query routing | Layer-2 Orchestrator |
+| **ReasoningBank** | Persistent reasoning patterns | Ruvector graph storage |
+| **39 Attention Mechanisms** | Dynamic attention selection | Recommendation/Search engines |
+
+### 18.3 Two-Tier LoRA Personalization
+
+```rust
+/// User-specific LoRA adapter for runtime personalization
+pub struct UserLoRAAdapter {
+    pub user_id: String,
+    pub rank: usize,               // LoRA rank (4-16 typical)
+    pub alpha: f32,                // Scaling factor
+    pub a_matrices: Vec<Tensor>,   // Low-rank A matrices
+    pub b_matrices: Vec<Tensor>,   // Low-rank B matrices
+    pub interaction_count: u64,
+    pub last_updated: DateTime<Utc>,
+}
+
+impl UserLoRAAdapter {
+    /// Apply LoRA adaptation to base model weights
+    pub fn apply(&self, base_weights: &Tensor) -> Tensor {
+        let delta = self.compute_delta();
+        base_weights + (self.alpha / self.rank as f32) * delta
+    }
+
+    /// Update adapter based on user interaction
+    pub async fn update_from_interaction(&mut self, interaction: &UserInteraction) {
+        // Incremental gradient update with EWC++ regularization
+        let gradient = compute_interaction_gradient(interaction);
+        let ewc_penalty = self.compute_ewc_penalty();
+        self.apply_gradient(gradient - ewc_penalty);
+    }
+}
+```
+
+**Storage Strategy:**
+- **Tier 1 (Hot)**: Active user adapters in Memorystore Valkey (~10KB per user)
+- **Tier 2 (Warm)**: Recent adapters in Cloud SQL PostgreSQL
+- **Tier 3 (Cold)**: Historical adapters in Cloud Storage
+
+### 18.4 Tiny Dancer Semantic Router
+
+Tiny Dancer uses FastGRNN (Fast Gated Recurrent Neural Network) for low-latency query classification and routing:
+
+```rust
+pub struct TinyDancerRouter {
+    model: FastGRNN,
+    query_types: Vec<QueryType>,
+    confidence_threshold: f32,
+}
+
+#[derive(Clone, Debug)]
+pub enum QueryType {
+    ContentDiscovery,      // "Find me action movies"
+    PersonalRecommendation,// "What should I watch tonight?"
+    MetadataLookup,        // "Who directed Inception?"
+    AvailabilityCheck,     // "Where can I watch Breaking Bad?"
+    ComparisonQuery,       // "Netflix vs Disney+ for sci-fi"
+    TrendingAnalysis,      // "What's popular this week?"
+}
+
+impl TinyDancerRouter {
+    /// Route query to appropriate handler with confidence score
+    pub async fn route(&self, query: &str) -> (QueryType, f32) {
+        let embedding = self.model.encode(query);
+        let (query_type, confidence) = self.classify(embedding);
+
+        if confidence < self.confidence_threshold {
+            return (QueryType::ContentDiscovery, confidence); // Default fallback
+        }
+
+        (query_type, confidence)
+    }
+
+    /// Select optimal attention mechanism for query type
+    pub fn select_attention(&self, query_type: &QueryType) -> AttentionMechanism {
+        match query_type {
+            QueryType::ContentDiscovery => AttentionMechanism::FlashAttention,
+            QueryType::PersonalRecommendation => AttentionMechanism::GraphRoPE,
+            QueryType::MetadataLookup => AttentionMechanism::Linear,
+            QueryType::AvailabilityCheck => AttentionMechanism::Sparse,
+            QueryType::ComparisonQuery => AttentionMechanism::CrossAttention,
+            QueryType::TrendingAnalysis => AttentionMechanism::MultiHeadGraph,
+        }
+    }
+}
+```
+
+### 18.5 Attention Mechanism Selection
+
+SONA provides 39 attention mechanisms grouped into four categories:
+
+| Category | Mechanisms | Use Case |
+|----------|------------|----------|
+| **Core (12)** | MultiHead, Flash, Linear, Sliding Window, Local, Global, Chunked, Dilated, Strided, Relative, ALiBi, RoPE | Standard transformer operations |
+| **Graph (10)** | GraphRoPE, EdgeFeatured, Node, Bipartite, Heterogeneous, Message Passing, GraphSAGE, GAT, GCN, GIN | Graph neural network queries |
+| **Specialized (9)** | Sparse, Cross, Kernel, Landmark, Performer, Longformer, BigBird, Reformer, Linformer | Long-context and efficiency |
+| **Hyperbolic (8)** | expMap, logMap, mobiusAddition, mobiusMatVec, hyperbolicMLR, poincareEmbedding, lorentzEmbedding, hyperbolicDistance | Hierarchical/tree structures |
+
+### 18.6 ReasoningBank Integration
+
+ReasoningBank stores learned reasoning patterns for reuse across similar queries:
+
+```rust
+pub struct ReasoningPattern {
+    pub pattern_id: Uuid,
+    pub query_signature: Vec<f32>,      // Query embedding fingerprint
+    pub reasoning_steps: Vec<ReasoningStep>,
+    pub outcome_quality: f32,           // User feedback score
+    pub usage_count: u64,
+    pub created_at: DateTime<Utc>,
+}
+
+pub struct ReasoningBank {
+    ruvector: RuvectorClient,
+    pattern_index: String,  // HNSW index for pattern lookup
+}
+
+impl ReasoningBank {
+    /// Find similar reasoning patterns for query
+    pub async fn find_patterns(&self, query_embedding: &[f32], k: usize) -> Vec<ReasoningPattern> {
+        self.ruvector.search_similar(
+            &self.pattern_index,
+            query_embedding,
+            k,
+            SearchParams::default().with_ef(64)
+        ).await
+    }
+
+    /// Store new successful reasoning pattern
+    pub async fn store_pattern(&self, pattern: ReasoningPattern) {
+        self.ruvector.upsert(&self.pattern_index, pattern).await;
+    }
+}
+```
+
+### 18.7 EWC++ Anti-Forgetting
+
+Elastic Weight Consolidation (EWC++) prevents catastrophic forgetting when updating user adapters:
+
+```rust
+pub struct EWCRegularizer {
+    fisher_information: HashMap<String, Tensor>,  // Per-parameter importance
+    optimal_weights: HashMap<String, Tensor>,     // Previous optimal values
+    lambda: f32,                                   // Regularization strength
+}
+
+impl EWCRegularizer {
+    /// Compute EWC penalty for weight update
+    pub fn compute_penalty(&self, current_weights: &HashMap<String, Tensor>) -> Tensor {
+        let mut penalty = Tensor::zeros(&[1]);
+
+        for (name, weight) in current_weights {
+            if let Some(fisher) = self.fisher_information.get(name) {
+                if let Some(optimal) = self.optimal_weights.get(name) {
+                    let diff = weight - optimal;
+                    penalty = penalty + (fisher * diff.pow(2)).sum();
+                }
+            }
+        }
+
+        self.lambda * penalty
+    }
+}
+```
+
+### 18.8 SONA GCP Deployment
+
+| Component | GKE Service | Resources | Scaling |
+|-----------|-------------|-----------|---------|
+| Tiny Dancer Router | `sona-router` | 0.5 vCPU, 1GB RAM | HPA: 2-20 pods |
+| LoRA Adapter Service | `sona-lora` | 2 vCPU, 4GB RAM | HPA: 3-15 pods |
+| Attention Selector | `sona-attention` | 1 vCPU, 2GB RAM | HPA: 2-10 pods |
+| ReasoningBank API | `sona-reasoning` | 1 vCPU, 2GB RAM | HPA: 2-8 pods |
+
+**Estimated Additional Cost**: $300-500/month for SONA services
+
+### 18.9 SONA Integration Flow
+
+```
+User Query
+    │
+    ▼
+┌─────────────────┐
+│  Tiny Dancer    │ ◄── Query classification
+│  Router         │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  ReasoningBank  │ ◄── Pattern lookup
+│  Lookup         │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Attention      │ ◄── Dynamic mechanism selection
+│  Selector       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  LoRA Adapter   │ ◄── User personalization
+│  Application    │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  Base Model     │ ◄── Enhanced inference
+│  Inference      │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  EWC++ Update   │ ◄── Learn from interaction
+│  (async)        │
+└─────────────────┘
+```
+
+---
+
+## 19. Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-4)
 - [ ] Set up multi-repo structure with Cargo workspace
@@ -2016,9 +2290,15 @@ kubectl get pods -n media-gateway-layer3
 |----------|------------|---------|
 | Language | Rust | Primary implementation (100%) |
 | Data | Ruvector | Hypergraph + Vector + GNN |
+| Intelligence | SONA | Self-Optimizing Neural Architecture |
+| Adaptation | Two-Tier LoRA | Runtime user personalization |
+| Routing | Tiny Dancer | FastGRNN semantic routing |
+| Attention | 39 Mechanisms | Dynamic attention selection |
+| Learning | EWC++ | Anti-catastrophic forgetting |
+| Patterns | ReasoningBank | Reasoning pattern storage |
 | Real-Time | PubNub | Cross-device sync |
 | Events | Google Pub/Sub | Event streaming |
-| Cache | Memorystore (Valkey) | Session/query cache |
+| Cache | Memorystore (Valkey) | Session/query cache + LoRA adapters |
 | Database | Cloud SQL PostgreSQL | Persistent storage |
 | Auth | Custom OAuth 2.0 | Authentication |
 | Agents | Claude-Flow | Multi-agent orchestration |
@@ -2065,6 +2345,9 @@ kubectl get pods -n media-gateway-layer3
 10. **Explainable Recommendations**: Graph paths show "why"
 11. **Cloud-Native GCP**: Production-grade infrastructure with GKE Autopilot
 12. **Zero-Trust Security**: Workload Identity, Cloud Armor, private networking
+13. **SONA Runtime Adaptation**: Personalization without retraining via Two-Tier LoRA
+14. **39 Attention Mechanisms**: Dynamic selection for optimal query processing
+15. **Anti-Forgetting**: EWC++ ensures stable long-term learning
 
 ---
 
@@ -2093,6 +2376,40 @@ kubectl get pods -n media-gateway-layer3
 
 ---
 
-*Document Version: 1.1.0*
+## Appendix E: SONA Intelligence Summary
+
+| Component | Technology | Purpose | Integration |
+|-----------|------------|---------|-------------|
+| Two-Tier LoRA | Low-Rank Adaptation | Per-user personalization | Memorystore + Cloud SQL |
+| EWC++ | Elastic Weight Consolidation | Anti-forgetting | Model update pipeline |
+| Tiny Dancer | FastGRNN | Query routing | Layer-2 Orchestrator |
+| ReasoningBank | Pattern Storage | Reasoning reuse | Ruvector HNSW |
+| Attention (39) | Dynamic Selection | Optimal processing | Search/Rec engines |
+
+**SONA Performance Targets:**
+
+| Metric | Target |
+|--------|--------|
+| Query routing latency | < 5ms |
+| LoRA application | < 10ms |
+| Attention selection | < 2ms |
+| Pattern lookup | < 15ms |
+| EWC update (async) | < 100ms |
+
+**SONA Cost Estimate (Monthly):**
+
+| Service | Cost |
+|---------|------|
+| SONA Router (GKE) | $100-150 |
+| LoRA Adapter Service | $100-200 |
+| Attention Selector | $50-75 |
+| ReasoningBank API | $50-75 |
+| **Total SONA** | **$300-500** |
+
+> **Full SONA Documentation**: See [`SONA_INTEGRATION_SPECIFICATION.md`](SONA_INTEGRATION_SPECIFICATION.md) for complete implementation details, Rust code examples, and deployment configurations.
+
+---
+
+*Document Version: 1.2.0*
 *Last Updated: December 2025*
-*Authors: 9-Agent Architecture Swarm + GCP Integration*
+*Authors: 9-Agent Architecture Swarm + GCP Integration + SONA Intelligence*

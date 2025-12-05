@@ -6,13 +6,14 @@
 
 [![Rust](https://img.shields.io/badge/rust-100%25-orange.svg)](https://www.rust-lang.org/)
 [![GCP](https://img.shields.io/badge/GCP-GKE%20%7C%20Cloud%20Run-4285F4.svg)](https://cloud.google.com/)
+[![SONA](https://img.shields.io/badge/SONA-Intelligence%20Engine-purple.svg)](#sona-intelligence-engine)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Architecture](https://img.shields.io/badge/architecture-4--layer-green.svg)](#architecture)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 *Eliminate the 45 minutes people waste daily deciding what to watch.*
 
-[Architecture](#architecture) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation) · [Getting Started](#getting-started)
+[Architecture](#architecture) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation) · [Getting Started](#getting-started)
 
 </div>
 
@@ -26,6 +27,8 @@ Media Gateway is a comprehensive architecture blueprint for a unified TV content
 
 - **Unified Content Discovery** — Search across 10+ streaming platforms simultaneously
 - **Intelligent Recommendations** — Hybrid engine combining collaborative filtering, content-based analysis, and Graph Neural Networks
+- **SONA Intelligence Engine** — Self-Optimizing Neural Architecture with runtime adaptation via Two-Tier LoRA
+- **39 Attention Mechanisms** — Dynamic selection for optimal query processing (Graph, Hyperbolic, Transformer)
 - **Cross-Device Sync** — Real-time watchlist and progress synchronization via PubNub
 - **Privacy-First Design** — Federated learning with differential privacy for personalization
 - **Rust-Native Performance** — 100% Rust implementation for reliability and speed
@@ -66,6 +69,10 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 |-----------|------------|---------|
 | **Runtime** | Rust | Primary implementation language |
 | **Data Engine** | Ruvector | Hypergraph, vector indexes, GNN simulation |
+| **Intelligence** | SONA | Self-Optimizing Neural Architecture |
+| **Personalization** | Two-Tier LoRA | Runtime adaptation without retraining |
+| **Routing** | Tiny Dancer | FastGRNN semantic query routing |
+| **Attention** | 39 Mechanisms | Dynamic attention selection |
 | **Real-Time Sync** | PubNub | Cross-device state synchronization |
 | **Orchestration** | Claude-Flow | Multi-agent AI coordination (SPARC methodology) |
 | **Authentication** | OAuth2 + PKCE | Secure streaming platform authorization |
@@ -205,8 +212,64 @@ gcloud run deploy api-gateway \
 | Cloud SQL (HA, 4 vCPU) | $400-500 |
 | Memorystore (10GB HA) | $300-350 |
 | Pub/Sub (10M msgs) | $50-100 |
+| SONA Intelligence Services | $300-500 |
 | Other (Armor, Logging, etc.) | $100-150 |
-| **Total** | **$1,850-2,700** |
+| **Total** | **$2,150-3,200** |
+
+---
+
+## SONA Intelligence Engine
+
+Media Gateway integrates the **SONA (Self-Optimizing Neural Architecture)** from Ruvector to provide runtime adaptation and personalization without model retraining.
+
+### SONA Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       SONA INTELLIGENCE ENGINE                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │  SEMANTIC ROUTING (Tiny Dancer)                                       │  │
+│  │  FastGRNN query classification → Optimal handler dispatch             │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                         │
+│  ┌─────────────────────────────────▼─────────────────────────────────────┐  │
+│  │  ATTENTION SELECTION (39 Mechanisms)                                   │  │
+│  │  Core │ Graph │ Specialized │ Hyperbolic                              │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                         │
+│  ┌─────────────────────────────────▼─────────────────────────────────────┐  │
+│  │  RUNTIME ADAPTATION                                                    │  │
+│  │  Two-Tier LoRA │ EWC++ (Anti-forgetting) │ ReasoningBank              │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Core SONA Components
+
+| Component | Purpose | Key Benefit |
+|-----------|---------|-------------|
+| **Two-Tier LoRA** | Low-rank adaptation for user personalization | ~10KB per user, no retraining required |
+| **Tiny Dancer** | FastGRNN-based semantic query routing | <5ms routing latency |
+| **39 Attention Mechanisms** | Dynamic attention for different query types | Optimal processing for graphs, text, hierarchies |
+| **ReasoningBank** | Persistent storage of reasoning patterns | Learn once, reuse across similar queries |
+| **EWC++** | Elastic Weight Consolidation | Prevents catastrophic forgetting during updates |
+
+### Attention Mechanism Categories
+
+| Category | Count | Use Cases |
+|----------|-------|-----------|
+| **Core** | 12 | MultiHead, Flash, Linear, RoPE, ALiBi for standard transformers |
+| **Graph** | 10 | GraphRoPE, GAT, GCN for content relationship queries |
+| **Specialized** | 9 | Sparse, Cross, Longformer for complex queries |
+| **Hyperbolic** | 8 | expMap, mobiusAddition for hierarchical content taxonomies |
+
+### How SONA Improves Recommendations
+
+1. **Query Understanding** — Tiny Dancer classifies user intent in <5ms
+2. **Personalization** — LoRA adapters apply user preferences without retraining
+3. **Pattern Reuse** — ReasoningBank caches successful reasoning for similar queries
+4. **Continuous Learning** — EWC++ enables safe incremental updates
 
 ---
 
@@ -216,7 +279,8 @@ gcloud run deploy api-gateway \
 
 | Document | Description |
 |----------|-------------|
-| [`FINAL_ARCHITECTURE_BLUEPRINT.md`](research/FINAL_ARCHITECTURE_BLUEPRINT.md) | Complete 17-section system architecture |
+| [`FINAL_ARCHITECTURE_BLUEPRINT.md`](research/FINAL_ARCHITECTURE_BLUEPRINT.md) | Complete 19-section system architecture |
+| [`SONA_INTEGRATION_SPECIFICATION.md`](research/SONA_INTEGRATION_SPECIFICATION.md) | SONA Intelligence Engine integration guide |
 | [`ARCHITECTURE_BLUEPRINT.md`](research/ARCHITECTURE_BLUEPRINT.md) | Core architecture design and patterns |
 | [`streaming-platform-research.md`](research/streaming-platform-research.md) | API analysis for 10+ streaming platforms |
 | [`GCP_DEPLOYMENT_ARCHITECTURE.md`](research/GCP_DEPLOYMENT_ARCHITECTURE.md) | Google Cloud deployment guide with Terraform |
@@ -446,7 +510,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ## Acknowledgments
 
 - **Google Cloud Platform** — Infrastructure and managed services
-- **Ruvector** — Hypergraph and vector database engine
+- **Ruvector + SONA** — Hypergraph, vector database, and Self-Optimizing Neural Architecture
 - **PubNub** — Real-time messaging infrastructure
 - **Claude-Flow** — Multi-agent orchestration framework
 - **JustWatch** — Streaming availability data
