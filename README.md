@@ -6,6 +6,7 @@
 
 [![Rust](https://img.shields.io/badge/rust-100%25-orange.svg)](https://www.rust-lang.org/)
 [![hackathon-tv5](https://img.shields.io/badge/hackathon--tv5-Agentics%20Foundation-00A67E.svg)](https://github.com/agenticsorg/hackathon-tv5)
+[![E2B](https://img.shields.io/badge/E2B-Sandboxed%20Agents-FF6B35.svg)](https://e2b.dev)
 [![GCP](https://img.shields.io/badge/GCP-GKE%20%7C%20Cloud%20Run-4285F4.svg)](https://cloud.google.com/)
 [![SONA](https://img.shields.io/badge/SONA-Intelligence%20Engine-purple.svg)](#sona-intelligence-engine)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -14,7 +15,7 @@
 
 *Eliminate the 45 minutes people waste daily deciding what to watch.*
 
-[Architecture](#architecture) · [hackathon-tv5](#hackathon-tv5-integration) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation) · [Getting Started](#getting-started)
+[Architecture](#architecture) · [hackathon-tv5](#hackathon-tv5-integration) · [E2B Sandboxes](#e2b-sandbox-integration) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation)
 
 </div>
 
@@ -30,6 +31,7 @@ Media Gateway is a comprehensive architecture blueprint for a unified TV content
 - **Intelligent Recommendations** — Hybrid engine combining collaborative filtering, content-based analysis, and Graph Neural Networks
 - **hackathon-tv5 Integration** — Built on Agentics Foundation toolkit with ARW specification and 17+ tools
 - **ARW Protocol** — Agent-Ready Web with 85% token reduction for efficient AI-agent interaction
+- **E2B Sandboxed Agents** — Firecracker microVM isolation for safe AI-generated code execution
 - **SONA Intelligence Engine** — Self-Optimizing Neural Architecture with runtime adaptation via Two-Tier LoRA
 - **39 Attention Mechanisms** — Dynamic selection for optimal query processing (Graph, Hyperbolic, Transformer)
 - **Cross-Device Sync** — Real-time watchlist and progress synchronization via PubNub
@@ -73,6 +75,7 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 | **Runtime** | Rust | Primary implementation language |
 | **Foundation** | [hackathon-tv5](https://github.com/agenticsorg/hackathon-tv5) | ARW spec, MCP server, 17+ tools |
 | **Protocol** | ARW | Agent-Ready Web (85% token reduction) |
+| **Sandboxing** | [E2B](https://e2b.dev) | Firecracker microVM agent isolation |
 | **Data Engine** | Ruvector | Hypergraph, vector indexes, GNN simulation |
 | **Intelligence** | SONA | Self-Optimizing Neural Architecture |
 | **Personalization** | Two-Tier LoRA | Runtime adaptation without retraining |
@@ -291,8 +294,42 @@ gcloud run deploy api-gateway \
 | Memorystore (10GB HA) | $300-350 |
 | Pub/Sub (10M msgs) | $50-100 |
 | SONA Intelligence Services | $300-500 |
+| E2B Sandboxes | $250-450 |
 | Other (Armor, Logging, etc.) | $100-150 |
-| **Total** | **$2,150-3,200** |
+| **Total** | **$2,400-3,650** |
+
+---
+
+## E2B Sandbox Integration
+
+Media Gateway uses [E2B](https://e2b.dev) to provide secure, isolated sandbox environments for AI agent code execution. This ensures LLM-generated code runs safely without compromising production infrastructure.
+
+### Why E2B?
+
+| Challenge | E2B Solution |
+|-----------|--------------|
+| **Untrusted Code** | Firecracker microVM isolation |
+| **Resource Limits** | Configurable CPU/memory |
+| **Network Security** | Sandboxed with controlled egress |
+| **Fast Startup** | ~150ms boot time |
+| **Scale** | Thousands concurrent sandboxes |
+
+### Sandbox Types
+
+| Type | Use Case |
+|------|----------|
+| **Code Interpreter** | General agent code execution (Python/JS) |
+| **Data Analysis** | Recommendation computations |
+| **Desktop/Browser** | Web scraping, metadata enrichment |
+| **SONA Updater** | Safe LoRA weight updates |
+
+### Agent Execution Flow
+
+```
+Agent Task → LLM Generates Code → E2B Sandbox (isolated) → Results → Agent Response
+```
+
+All agent-generated code executes in isolated Firecracker microVMs, never on production infrastructure.
 
 ---
 
@@ -357,9 +394,10 @@ Media Gateway integrates the **SONA (Self-Optimizing Neural Architecture)** from
 
 | Document | Description |
 |----------|-------------|
-| [`FINAL_ARCHITECTURE_BLUEPRINT.md`](research/FINAL_ARCHITECTURE_BLUEPRINT.md) | Complete 19-section system architecture |
+| [`FINAL_ARCHITECTURE_BLUEPRINT.md`](research/FINAL_ARCHITECTURE_BLUEPRINT.md) | Complete 20-section system architecture |
 | [`SONA_INTEGRATION_SPECIFICATION.md`](research/SONA_INTEGRATION_SPECIFICATION.md) | SONA Intelligence Engine integration guide |
 | [`HACKATHON_TV5_INTEGRATION.md`](research/HACKATHON_TV5_INTEGRATION.md) | hackathon-tv5 toolkit integration specification |
+| [`E2B_SANDBOX_INTEGRATION.md`](research/E2B_SANDBOX_INTEGRATION.md) | E2B sandbox integration for secure agent execution |
 | [`ARCHITECTURE_BLUEPRINT.md`](research/ARCHITECTURE_BLUEPRINT.md) | Core architecture design and patterns |
 | [`streaming-platform-research.md`](research/streaming-platform-research.md) | API analysis for 10+ streaming platforms |
 | [`GCP_DEPLOYMENT_ARCHITECTURE.md`](research/GCP_DEPLOYMENT_ARCHITECTURE.md) | Google Cloud deployment guide with Terraform |
@@ -589,6 +627,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 ## Acknowledgments
 
 - **[Agentics Foundation hackathon-tv5](https://github.com/agenticsorg/hackathon-tv5)** — ARW specification, MCP server, and tool ecosystem
+- **[E2B](https://e2b.dev)** — Firecracker microVM sandboxes for secure agent code execution
 - **Google Cloud Platform** — Infrastructure and managed services
 - **Ruvector + SONA** — Hypergraph, vector database, and Self-Optimizing Neural Architecture
 - **PubNub** — Real-time messaging infrastructure

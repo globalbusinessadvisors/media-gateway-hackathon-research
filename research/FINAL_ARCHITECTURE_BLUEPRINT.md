@@ -6,6 +6,7 @@ This document presents the complete architecture blueprint for a **global, cross
 
 **Core Technologies:**
 - **Ruvector + SONA**: Hypergraph, vector, GNN, and Self-Optimizing Neural Architecture
+- **E2B Sandboxes**: Secure isolated execution for AI-generated code (Firecracker microVMs)
 - **hackathon-tv5**: ARW specification, MCP server foundation, 17+ integrated tools
 - **PubNub**: Real-time cross-device synchronization
 - **Claude-Flow**: Multi-agent orchestration with SPARC methodology
@@ -41,7 +42,8 @@ This document presents the complete architecture blueprint for a **global, cross
 16. [Integration with hackathon-tv5](#16-integration-with-hackathon-tv5)
 17. [Google Cloud Platform Deployment](#17-google-cloud-platform-deployment)
 18. [SONA Intelligence Engine Integration](#18-sona-intelligence-engine-integration)
-19. [Implementation Roadmap](#19-implementation-roadmap)
+19. [E2B Sandbox Integration](#19-e2b-sandbox-integration)
+20. [Implementation Roadmap](#20-implementation-roadmap)
 
 ---
 
@@ -2395,9 +2397,124 @@ User Query
 
 ---
 
-## 19. Implementation Roadmap
+## 19. E2B Sandbox Integration
 
-### Phase 1: Foundation (Weeks 1-4)
+[E2B](https://e2b.dev) provides secure, isolated sandbox environments for executing AI-generated code. This is critical for our multi-agent system where LLM-generated code must run safely without compromising production infrastructure.
+
+### 19.1 Why E2B for Agent Sandboxing
+
+| Challenge | E2B Solution |
+|-----------|--------------|
+| **Untrusted Code Execution** | Firecracker microVM isolation (~150ms startup) |
+| **Resource Exhaustion** | Configurable CPU/memory limits |
+| **Network Security** | Sandboxed network with controlled egress |
+| **Data Exfiltration** | Isolated filesystem, no host access |
+| **Long-Running Tasks** | Sessions up to 24 hours |
+| **Scale** | Thousands of concurrent sandboxes |
+
+### 19.2 E2B Integration Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        LAYER 2: INTELLIGENCE + E2B                               │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                   CLAUDE-FLOW ORCHESTRATOR                               │    │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐           │    │
+│  │  │ Discovery  │ │ Analysis   │ │ Recommend  │ │  Search    │           │    │
+│  │  │   Agent    │ │   Agent    │ │   Agent    │ │   Agent    │           │    │
+│  │  └─────┬──────┘ └─────┬──────┘ └─────┬──────┘ └─────┬──────┘           │    │
+│  │        │              │              │              │                   │    │
+│  │        └──────────────┴──────────────┴──────────────┘                   │    │
+│  │                              │                                          │    │
+│  │                    ┌─────────▼─────────┐                               │    │
+│  │                    │  E2B SANDBOX      │                               │    │
+│  │                    │    MANAGER        │                               │    │
+│  │                    └─────────┬─────────┘                               │    │
+│  └──────────────────────────────┼──────────────────────────────────────────┘    │
+│                                 │                                               │
+│  ┌──────────────────────────────▼──────────────────────────────────────────┐   │
+│  │                         E2B CLOUD                                        │   │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐            │   │
+│  │  │   Code         │  │   Data         │  │   Desktop      │            │   │
+│  │  │   Interpreter  │  │   Analysis     │  │   Sandbox      │            │   │
+│  │  │   (Python/JS)  │  │   (Pandas)     │  │   (Browser)    │            │   │
+│  │  └────────────────┘  └────────────────┘  └────────────────┘            │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 19.3 Sandbox Types
+
+| Sandbox Type | Template | Use Case |
+|--------------|----------|----------|
+| **Code Interpreter** | `e2b/code-interpreter` | General agent code execution |
+| **Data Analysis** | `media-gateway-analysis` | Recommendation computations |
+| **Search Executor** | `media-gateway-search` | Vector similarity code |
+| **Desktop/Browser** | `e2b/desktop` | Web scraping, metadata enrichment |
+| **SONA Updater** | `sona-lora-updater` | Safe LoRA weight updates |
+
+### 19.4 Agent Sandbox Workflow
+
+```rust
+/// Execute agent-generated code safely in E2B sandbox
+pub async fn execute_safely(
+    &self,
+    task: &AgentTask,
+) -> Result<AgentResult, AgentError> {
+    // 1. Agent generates code via LLM
+    let code = self.agent.generate_code(task).await?;
+
+    // 2. Create isolated sandbox
+    let sandbox = self.e2b.create_sandbox(&self.template).await?;
+
+    // 3. Upload inputs
+    self.e2b.upload_file(&sandbox.id, "/data/inputs.json", &task.inputs).await?;
+
+    // 4. Execute in sandbox (isolated from production)
+    let result = self.e2b.execute_code(&sandbox.id, &code, Language::Python).await?;
+
+    // 5. Download outputs
+    let outputs = self.e2b.download_file(&sandbox.id, "/output/results.json").await?;
+
+    // 6. Cleanup
+    self.e2b.terminate(&sandbox.id).await?;
+
+    Ok(AgentResult { output: outputs, logs: result.stdout })
+}
+```
+
+### 19.5 Security Configuration
+
+```rust
+pub struct SandboxSecurityConfig {
+    pub internet_access: bool,        // Default: false
+    pub allowed_hosts: Vec<String>,   // Allowlist for external access
+    pub timeout_seconds: u32,         // Max execution time
+    pub memory_mb: u32,               // Memory limit
+    pub cpu_cores: u8,                // CPU limit
+    pub max_upload_bytes: u64,        // Input size limit
+    pub max_download_bytes: u64,      // Output size limit
+}
+```
+
+### 19.6 E2B Cost Estimate
+
+| Usage | Monthly Estimate |
+|-------|-----------------|
+| Sandbox Hours (~1,000) | $200-400 |
+| Data Transfer | ~$50 |
+| **Total E2B** | **$250-450** |
+
+> **Full E2B Documentation**: See [`E2B_SANDBOX_INTEGRATION.md`](E2B_SANDBOX_INTEGRATION.md) for complete implementation details, custom templates, and GKE deployment configuration.
+
+---
+
+## 20. Implementation Roadmap
+
+### Phase 1: Foundation
 - [ ] Set up multi-repo structure with Cargo workspace
 - [ ] Deploy Ruvector cluster (dev environment)
 - [ ] Implement basic hypergraph schema
@@ -2446,6 +2563,7 @@ User Query
 | Language | Rust | Primary implementation (100%) |
 | Data | Ruvector | Hypergraph + Vector + GNN |
 | Intelligence | SONA | Self-Optimizing Neural Architecture |
+| Sandboxing | E2B | Firecracker microVM agent isolation |
 | Adaptation | Two-Tier LoRA | Runtime user personalization |
 | Routing | Tiny Dancer | FastGRNN semantic routing |
 | Attention | 39 Mechanisms | Dynamic attention selection |
@@ -2510,6 +2628,7 @@ User Query
 15. **Anti-Forgetting**: EWC++ ensures stable long-term learning
 16. **hackathon-tv5 Foundation**: ARW specification with 85% token reduction
 17. **17+ Integrated Tools**: Claude Flow, Agentic Flow, RuVector, AgentDB ecosystem
+18. **E2B Sandboxed Execution**: Firecracker microVM isolation for safe agent code execution
 
 ---
 
@@ -2572,6 +2691,6 @@ User Query
 
 ---
 
-*Document Version: 1.3.0*
+*Document Version: 1.4.0*
 *Last Updated: December 2025*
-*Authors: 9-Agent Architecture Swarm + GCP Integration + SONA Intelligence + hackathon-tv5*
+*Authors: 9-Agent Architecture Swarm + GCP Integration + SONA Intelligence + hackathon-tv5 + E2B Sandboxing*
