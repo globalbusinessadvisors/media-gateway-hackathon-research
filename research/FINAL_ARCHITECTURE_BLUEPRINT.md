@@ -6,6 +6,7 @@ This document presents the complete architecture blueprint for a **global, cross
 
 **Core Technologies:**
 - **Ruvector + SONA**: Hypergraph, vector, GNN, and Self-Optimizing Neural Architecture
+- **hackathon-tv5**: ARW specification, MCP server foundation, 17+ integrated tools
 - **PubNub**: Real-time cross-device synchronization
 - **Claude-Flow**: Multi-agent orchestration with SPARC methodology
 - **Rust**: Primary implementation language (100%)
@@ -1380,58 +1381,147 @@ tv-discover  # No args = launch TUI
 
 ## 16. Integration with hackathon-tv5
 
-### 16.1 Integration Points
+This section details the comprehensive integration with the [Agentics Foundation hackathon-tv5](https://github.com/agenticsorg/hackathon-tv5) toolkit, which provides the foundation for our agentic AI media discovery system.
+
+### 16.1 hackathon-tv5 Overview
+
+The hackathon-tv5 project addresses the **"45-minute decision problem"** — the time users waste deciding what to watch due to content fragmentation across streaming platforms.
+
+**Key Components:**
+- **CLI Tool** (`npx agentics-hackathon`): Project initialization, tool installation, MCP server
+- **MCP Server**: 6 core tools with STDIO and SSE transport
+- **ARW Specification**: Agent-Ready Web protocol for efficient AI-agent interaction
+- **Demo Apps**: Media Discovery (Next.js) and ARW Chrome Extension
+- **17+ Tools**: AI assistants, orchestration frameworks, databases, and cloud integrations
+
+### 16.2 Integration Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                HACKATHON-TV5 INTEGRATION                                     │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  hackathon-tv5 provides:                                                    │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ 1. ARW (Agent-Ready Web) Specification                              │   │
-│  │    - Manifest files for discovery                                   │   │
-│  │    - Structured machine-readable views                              │   │
-│  │    - 85% token reduction for AI agents                              │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ 2. MCP Server Implementation                                         │   │
-│  │    - Full Model Context Protocol compliance                         │   │
-│  │    - Tool definitions for hackathon info                            │   │
-│  │    - Resource exposure for configuration                            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ 3. CLI Tool (npx agentics-hackathon)                                 │   │
-│  │    - Project initialization                                         │   │
-│  │    - Tool browser/installer                                         │   │
-│  │    - MCP server launcher                                            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│  Our system extends hackathon-tv5 by:                                       │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ 1. Using ARW spec for content discovery                             │   │
-│  │    - Leverage manifest files for streaming platform integration     │   │
-│  │    - Apply token reduction for agent queries                        │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ 2. Building MCP connectors on hackathon-tv5 foundation              │   │
-│  │    - Extend MCP server with streaming platform tools                │   │
-│  │    - Add content ingestion, search, recommendation tools            │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│  ┌─────────────────────────────────────────────────────────────────────┐   │
-│  │ 3. Integrating demo apps as reference implementations               │   │
-│  │    - Media Discovery Next.js app patterns                           │   │
-│  │    - ARW Chrome Extension for testing                               │   │
-│  └─────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        MEDIA GATEWAY + HACKATHON-TV5                             │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────────┐    │
+│  │                    USER EXPERIENCE LAYER                                 │    │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                   │    │
+│  │  │ Media Gateway│  │ hackathon-tv5│  │  ARW Chrome  │                   │    │
+│  │  │     CLI      │  │     CLI      │  │  Extension   │                   │    │
+│  │  │  (Rust TUI)  │  │ (npx agentics)│  │ (Inspector)  │                   │    │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                   │    │
+│  └─────────────────────────────────────────────────────────────────────────┘    │
+│                                      │                                           │
+│  ┌───────────────────────────────────▼──────────────────────────────────────┐   │
+│  │                    MCP PROTOCOL LAYER                                     │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                    │   │
+│  │  │hackathon-tv5 │  │ Media Gateway│  │   Claude     │                    │   │
+│  │  │  MCP Server  │  │ MCP Connectors│ │   Desktop    │                    │   │
+│  │  │  (6 tools)   │  │ (10+ platforms)│ │ Integration  │                    │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                    │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                           │
+│  ┌───────────────────────────────────▼──────────────────────────────────────┐   │
+│  │                    ARW (AGENT-READY WEB) LAYER                            │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                    │   │
+│  │  │   Machine    │  │    OAuth     │  │  AI-* HTTP   │                    │   │
+│  │  │    Views     │  │   Actions    │  │   Headers    │                    │   │
+│  │  │ (85% tokens) │  │ (Secure ops) │  │(Observability)│                    │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘                    │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                      │                                           │
+│  ┌───────────────────────────────────▼──────────────────────────────────────┐   │
+│  │                    TOOL ECOSYSTEM (17+ Tools)                             │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │   │
+│  │  │  Claude Flow │  │ Agentic Flow │  │   RuVector   │  │   AgentDB    │  │   │
+│  │  │ (101 tools)  │  │ (66 agents)  │  │  (Hypergraph)│  │  (Context)   │  │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │   │
+│  │  │  Google ADK  │  │  Vertex AI   │  │  SONA Engine │  │  SPARC 2.0   │  │   │
+│  │  │              │  │     SDK      │  │ (39 attn mech)│ │              │  │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 16.2 MCP Tool Extensions
+### 16.3 ARW Specification Integration
+
+The Agent-Ready Web (ARW) specification provides efficient agent-to-service communication:
+
+| Benefit | Impact | Implementation |
+|---------|--------|----------------|
+| **85% Token Reduction** | Lower API costs | Machine Views instead of HTML scraping |
+| **10x Faster Discovery** | Improved UX | Structured manifests |
+| **OAuth-Enforced Actions** | Secure transactions | Platform auth integration |
+| **AI-* Headers** | Traffic observability | Agent monitoring |
+
+```rust
+// ARW Machine View Integration
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ARWMediaView {
+    #[serde(rename = "@context")]
+    pub context: String,  // "https://agentics.org/arw/v1"
+    #[serde(rename = "@type")]
+    pub content_type: String,
+
+    pub id: String,
+    pub title: String,
+    pub availability: Vec<ARWPlatformAvailability>,
+
+    // Pre-computed for semantic search
+    pub embeddings: Option<Vec<f32>>,
+    pub taxonomy: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ARWHeaders {
+    #[serde(rename = "AI-Request-ID")]
+    pub request_id: String,
+    #[serde(rename = "AI-Agent-Name")]
+    pub agent_name: String,
+    #[serde(rename = "AI-Purpose")]
+    pub purpose: String,
+    #[serde(rename = "AI-Token-Budget")]
+    pub token_budget: Option<u32>,
+}
+```
+
+### 16.4 hackathon-tv5 MCP Server Tools
+
+| Tool | Purpose | Media Gateway Integration |
+|------|---------|---------------------------|
+| `get_hackathon_info` | Hackathon details | Project context |
+| `get_tracks` | Competition tracks | Track selection |
+| `get_available_tools` | Tool catalog | Tool discovery |
+| `get_project_status` | Project state | Status monitoring |
+| `check_tool_installed` | Tool verification | Dependency check |
+| `get_resources` | Resource links | Documentation access |
+
+### 16.5 Tool Ecosystem Integration
+
+**Orchestration Tools (Layer-2):**
+
+| Tool | Integration Point | Purpose |
+|------|-------------------|---------|
+| **Claude Flow** | Agent Orchestrator | 101 MCP tools, SPARC methodology |
+| **Agentic Flow** | Agent Orchestrator | 66 specialized agents |
+| **Flow Nexus** | Cross-Platform Orchestrator | Workflow coordination |
+| **Google ADK** | Agent Orchestrator | Agent development kit |
+
+**Data Tools (Data Layer):**
+
+| Tool | Integration Point | Purpose |
+|------|-------------------|---------|
+| **RuVector** | Primary Data Engine | Hypergraph + Vector + GNN |
+| **AgentDB** | Memory Layer | Agent context storage |
+
+**Cloud Tools (Infrastructure):**
+
+| Tool | Integration Point | Purpose |
+|------|-------------------|---------|
+| **Google Cloud CLI** | GCP Deployment | Infrastructure management |
+| **Vertex AI SDK** | Intelligence Layer | ML model serving |
+
+### 16.6 MCP Tool Extensions
 
 ```rust
 // Extend hackathon-tv5 MCP server with streaming-specific tools
@@ -1480,6 +1570,38 @@ pub fn get_streaming_tools() -> Vec<MCPToolSchema> {
     ]
 }
 ```
+
+### 16.7 Claude Desktop Configuration
+
+```json
+{
+  "mcpServers": {
+    "agentics-hackathon": {
+      "command": "npx",
+      "args": ["agentics-hackathon", "mcp"]
+    },
+    "media-gateway": {
+      "command": "./media-gateway",
+      "args": ["mcp", "--transport", "stdio"],
+      "env": {
+        "RUST_LOG": "info",
+        "RUVECTOR_URL": "http://localhost:6333"
+      }
+    }
+  }
+}
+```
+
+### 16.8 Hackathon Track Alignment
+
+| Track | Media Gateway Focus | Key Components |
+|-------|--------------------|--------------------|
+| **Entertainment Discovery** | Core functionality | Search, recommendations, availability |
+| **Multi-Agent Systems** | Layer-2 Intelligence | Claude Flow, SONA, 9 specialized agents |
+| **Agentic Workflows** | End-to-end flows | Auth → Search → Recommend → Sync |
+| **Open Innovation** | Novel features | Cross-device sync, privacy-safe personalization |
+
+> **Full Integration Documentation**: See [`HACKATHON_TV5_INTEGRATION.md`](HACKATHON_TV5_INTEGRATION.md) for complete integration specification, deployment configurations, and implementation examples.
 
 ---
 
@@ -2296,6 +2418,11 @@ User Query
 | Attention | 39 Mechanisms | Dynamic attention selection |
 | Learning | EWC++ | Anti-catastrophic forgetting |
 | Patterns | ReasoningBank | Reasoning pattern storage |
+| Foundation | hackathon-tv5 | ARW spec, MCP server, 17+ tools |
+| Protocol | ARW | Agent-Ready Web (85% token reduction) |
+| MCP | hackathon-tv5 MCP | 6 core tools, STDIO/SSE transport |
+| Tools | Claude Flow | 101 MCP tools, orchestration |
+| Tools | Agentic Flow | 66 specialized agents |
 | Real-Time | PubNub | Cross-device sync |
 | Events | Google Pub/Sub | Event streaming |
 | Cache | Memorystore (Valkey) | Session/query cache + LoRA adapters |
@@ -2348,6 +2475,8 @@ User Query
 13. **SONA Runtime Adaptation**: Personalization without retraining via Two-Tier LoRA
 14. **39 Attention Mechanisms**: Dynamic selection for optimal query processing
 15. **Anti-Forgetting**: EWC++ ensures stable long-term learning
+16. **hackathon-tv5 Foundation**: ARW specification with 85% token reduction
+17. **17+ Integrated Tools**: Claude Flow, Agentic Flow, RuVector, AgentDB ecosystem
 
 ---
 
@@ -2410,6 +2539,6 @@ User Query
 
 ---
 
-*Document Version: 1.2.0*
+*Document Version: 1.3.0*
 *Last Updated: December 2025*
-*Authors: 9-Agent Architecture Swarm + GCP Integration + SONA Intelligence*
+*Authors: 9-Agent Architecture Swarm + GCP Integration + SONA Intelligence + hackathon-tv5*

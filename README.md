@@ -5,6 +5,7 @@
 **A Global Cross-Platform TV Discovery System**
 
 [![Rust](https://img.shields.io/badge/rust-100%25-orange.svg)](https://www.rust-lang.org/)
+[![hackathon-tv5](https://img.shields.io/badge/hackathon--tv5-Agentics%20Foundation-00A67E.svg)](https://github.com/agenticsorg/hackathon-tv5)
 [![GCP](https://img.shields.io/badge/GCP-GKE%20%7C%20Cloud%20Run-4285F4.svg)](https://cloud.google.com/)
 [![SONA](https://img.shields.io/badge/SONA-Intelligence%20Engine-purple.svg)](#sona-intelligence-engine)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -13,7 +14,7 @@
 
 *Eliminate the 45 minutes people waste daily deciding what to watch.*
 
-[Architecture](#architecture) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation) · [Getting Started](#getting-started)
+[Architecture](#architecture) · [hackathon-tv5](#hackathon-tv5-integration) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation) · [Getting Started](#getting-started)
 
 </div>
 
@@ -27,6 +28,8 @@ Media Gateway is a comprehensive architecture blueprint for a unified TV content
 
 - **Unified Content Discovery** — Search across 10+ streaming platforms simultaneously
 - **Intelligent Recommendations** — Hybrid engine combining collaborative filtering, content-based analysis, and Graph Neural Networks
+- **hackathon-tv5 Integration** — Built on Agentics Foundation toolkit with ARW specification and 17+ tools
+- **ARW Protocol** — Agent-Ready Web with 85% token reduction for efficient AI-agent interaction
 - **SONA Intelligence Engine** — Self-Optimizing Neural Architecture with runtime adaptation via Two-Tier LoRA
 - **39 Attention Mechanisms** — Dynamic selection for optimal query processing (Graph, Hyperbolic, Transformer)
 - **Cross-Device Sync** — Real-time watchlist and progress synchronization via PubNub
@@ -68,6 +71,8 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | **Runtime** | Rust | Primary implementation language |
+| **Foundation** | [hackathon-tv5](https://github.com/agenticsorg/hackathon-tv5) | ARW spec, MCP server, 17+ tools |
+| **Protocol** | ARW | Agent-Ready Web (85% token reduction) |
 | **Data Engine** | Ruvector | Hypergraph, vector indexes, GNN simulation |
 | **Intelligence** | SONA | Self-Optimizing Neural Architecture |
 | **Personalization** | Two-Tier LoRA | Runtime adaptation without retraining |
@@ -79,6 +84,79 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 | **Service Communication** | gRPC (tonic) | Inter-service messaging |
 | **Container Orchestration** | GKE Autopilot | Managed Kubernetes for microservices |
 | **Serverless** | Cloud Run | Auto-scaling API gateway and webhooks |
+
+---
+
+## hackathon-tv5 Integration
+
+Media Gateway is built on the [Agentics Foundation hackathon-tv5](https://github.com/agenticsorg/hackathon-tv5) toolkit, which provides the foundational infrastructure for agentic AI media discovery.
+
+### What is hackathon-tv5?
+
+hackathon-tv5 addresses the **"45-minute decision problem"** — the time users waste deciding what to watch due to content fragmentation across streaming platforms. It provides:
+
+- **CLI Tool** (`npx agentics-hackathon`): Project initialization, tool installation, MCP server
+- **MCP Server**: 6 core tools with STDIO and SSE transport
+- **ARW Specification**: Agent-Ready Web protocol for efficient AI interaction
+- **Demo Apps**: Media Discovery (Next.js) and ARW Chrome Extension
+- **17+ Tools**: AI assistants, orchestration frameworks, databases
+
+### ARW (Agent-Ready Web) Benefits
+
+| Benefit | Impact |
+|---------|--------|
+| **85% Token Reduction** | Machine views instead of HTML scraping |
+| **10x Faster Discovery** | Structured manifests for quick parsing |
+| **OAuth-Enforced Actions** | Secure platform transactions |
+| **AI-* Headers** | Full agent traffic observability |
+
+### Tool Ecosystem
+
+hackathon-tv5 provides 17+ tools across six categories:
+
+| Category | Tools | Integration |
+|----------|-------|-------------|
+| **AI Assistants** | Claude Code CLI, Gemini CLI | Development |
+| **Orchestration** | Claude Flow (101 tools), Agentic Flow (66 agents) | Layer-2 Intelligence |
+| **Cloud** | Google Cloud CLI, Vertex AI SDK | Infrastructure |
+| **Databases** | RuVector, AgentDB | Data Layer |
+| **Frameworks** | LionPride, OpenAI Agents SDK | Alternative agents |
+| **Advanced** | SPARC 2.0, Strange Loops | Reasoning patterns |
+
+### Quick Start with hackathon-tv5
+
+```bash
+# Initialize project with hackathon-tv5
+npx agentics-hackathon init
+# Select track: Entertainment Discovery
+
+# Install recommended tools
+npx agentics-hackathon tools --install claude-flow
+npx agentics-hackathon tools --install ruvector
+
+# Start MCP servers
+npx agentics-hackathon mcp sse --port 3000
+
+# Check status
+npx agentics-hackathon status
+```
+
+### Claude Desktop Integration
+
+```json
+{
+  "mcpServers": {
+    "agentics-hackathon": {
+      "command": "npx",
+      "args": ["agentics-hackathon", "mcp"]
+    },
+    "media-gateway": {
+      "command": "./media-gateway",
+      "args": ["mcp", "--transport", "stdio"]
+    }
+  }
+}
+```
 
 ---
 
@@ -281,6 +359,7 @@ Media Gateway integrates the **SONA (Self-Optimizing Neural Architecture)** from
 |----------|-------------|
 | [`FINAL_ARCHITECTURE_BLUEPRINT.md`](research/FINAL_ARCHITECTURE_BLUEPRINT.md) | Complete 19-section system architecture |
 | [`SONA_INTEGRATION_SPECIFICATION.md`](research/SONA_INTEGRATION_SPECIFICATION.md) | SONA Intelligence Engine integration guide |
+| [`HACKATHON_TV5_INTEGRATION.md`](research/HACKATHON_TV5_INTEGRATION.md) | hackathon-tv5 toolkit integration specification |
 | [`ARCHITECTURE_BLUEPRINT.md`](research/ARCHITECTURE_BLUEPRINT.md) | Core architecture design and patterns |
 | [`streaming-platform-research.md`](research/streaming-platform-research.md) | API analysis for 10+ streaming platforms |
 | [`GCP_DEPLOYMENT_ARCHITECTURE.md`](research/GCP_DEPLOYMENT_ARCHITECTURE.md) | Google Cloud deployment guide with Terraform |
@@ -509,6 +588,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
+- **[Agentics Foundation hackathon-tv5](https://github.com/agenticsorg/hackathon-tv5)** — ARW specification, MCP server, and tool ecosystem
 - **Google Cloud Platform** — Infrastructure and managed services
 - **Ruvector + SONA** — Hypergraph, vector database, and Self-Optimizing Neural Architecture
 - **PubNub** — Real-time messaging infrastructure
