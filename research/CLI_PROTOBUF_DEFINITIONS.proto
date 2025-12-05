@@ -1,0 +1,928 @@
+// TV Discovery CLI - Complete Protocol Buffer Definitions
+// Version: 1.0
+// Date: 2025-12-05
+
+syntax = "proto3";
+
+package tv_discovery.v1;
+
+// ============================================================================
+// Discovery Service - Core search and browse functionality
+// ============================================================================
+
+service DiscoveryService {
+  // Search operations
+  rpc Search(SearchRequest) returns (stream SearchResponse);
+  rpc GetContentDetails(ContentDetailsRequest) returns (ContentDetailsResponse);
+  rpc GetRecommendations(RecommendationRequest) returns (stream RecommendationResponse);
+  rpc GetSimilar(SimilarContentRequest) returns (stream SimilarContentResponse);
+
+  // Browse operations
+  rpc BrowseTrending(BrowseRequest) returns (stream BrowseResponse);
+  rpc BrowseNew(BrowseRequest) returns (stream BrowseResponse);
+  rpc BrowseExpiring(BrowseRequest) returns (stream BrowseResponse);
+  rpc BrowseByCategory(CategoryRequest) returns (stream BrowseResponse);
+
+  // Watch management
+  rpc GetWatchQueue(WatchQueueRequest) returns (WatchQueueResponse);
+  rpc AddToQueue(AddToQueueRequest) returns (WatchQueueResponse);
+  rpc RemoveFromQueue(RemoveFromQueueRequest) returns (WatchQueueResponse);
+  rpc ClearQueue(ClearQueueRequest) returns (WatchQueueResponse);
+
+  rpc GetWatchList(WatchListRequest) returns (WatchListResponse);
+  rpc AddToWatchList(AddToWatchListRequest) returns (WatchListResponse);
+  rpc RemoveFromWatchList(RemoveFromWatchListRequest) returns (WatchListResponse);
+}
+
+// ============================================================================
+// Search Messages
+// ============================================================================
+
+message SearchRequest {
+  string query = 1;
+  repeated string filters = 2;
+  SearchOptions options = 3;
+  string user_id = 4;
+}
+
+message SearchOptions {
+  int32 max_results = 1;
+  SortOrder sort_order = 2;
+  repeated string platforms = 3;
+  repeated string genres = 4;
+  int32 min_year = 5;
+  int32 max_year = 6;
+  float min_rating = 7;
+  repeated ContentType content_types = 8;
+  string language = 9;
+  string region = 10;
+}
+
+enum SortOrder {
+  SORT_ORDER_UNSPECIFIED = 0;
+  RELEVANCE = 1;
+  RATING_DESC = 2;
+  RATING_ASC = 3;
+  RELEASE_DATE_DESC = 4;
+  RELEASE_DATE_ASC = 5;
+  TITLE_ASC = 6;
+  TITLE_DESC = 7;
+  POPULARITY = 8;
+}
+
+message SearchResponse {
+  oneof response {
+    SearchChunk chunk = 1;
+    SearchProgress progress = 2;
+    SearchComplete complete = 3;
+    SearchError error = 4;
+  }
+}
+
+message SearchChunk {
+  string agent_id = 1;
+  string agent_name = 2;
+  repeated ContentItem items = 3;
+  int32 chunk_index = 4;
+  int32 total_chunks = 5;
+}
+
+message SearchProgress {
+  string agent_id = 1;
+  string agent_name = 2;
+  float progress_percent = 3;
+  string status_message = 4;
+  AgentStatus status = 5;
+}
+
+enum AgentStatus {
+  AGENT_STATUS_UNSPECIFIED = 0;
+  INITIALIZING = 1;
+  SEARCHING = 2;
+  PROCESSING = 3;
+  COMPLETED = 4;
+  FAILED = 5;
+  TIMEOUT = 6;
+}
+
+message SearchComplete {
+  int32 total_results = 1;
+  float duration_seconds = 2;
+  int32 agents_succeeded = 3;
+  int32 agents_failed = 4;
+  map<string, int32> results_per_agent = 5;
+}
+
+message SearchError {
+  string agent_id = 1;
+  string error_code = 2;
+  string message = 3;
+  ErrorSeverity severity = 4;
+}
+
+enum ErrorSeverity {
+  ERROR_SEVERITY_UNSPECIFIED = 0;
+  WARNING = 1;
+  ERROR = 2;
+  CRITICAL = 3;
+}
+
+// ============================================================================
+// Content Models
+// ============================================================================
+
+message ContentItem {
+  string id = 1;
+  string title = 2;
+  ContentType type = 3;
+  repeated string genres = 4;
+  Rating rating = 5;
+  string platform = 6;
+  string platform_id = 7;
+  string thumbnail_url = 8;
+  string poster_url = 9;
+  int32 year = 10;
+  string description = 11;
+  string language = 12;
+  ContentAvailability availability = 13;
+  repeated string cast = 14;
+  repeated string directors = 15;
+  int32 runtime_minutes = 16;
+  string content_rating = 17;  // TV-MA, PG-13, etc.
+  StreamingInfo streaming_info = 18;
+}
+
+enum ContentType {
+  CONTENT_TYPE_UNSPECIFIED = 0;
+  MOVIE = 1;
+  TV_SERIES = 2;
+  TV_EPISODE = 3;
+  DOCUMENTARY = 4;
+  SHORT = 5;
+  SPECIAL = 6;
+  SPORTS = 7;
+}
+
+message Rating {
+  float imdb = 1;
+  float rotten_tomatoes = 2;
+  float metacritic = 3;
+  float tmdb = 4;
+  int32 vote_count = 5;
+}
+
+message ContentAvailability {
+  bool available_now = 1;
+  int64 available_until = 2;  // Unix timestamp
+  bool requires_subscription = 3;
+  bool requires_rental = 4;
+  bool requires_purchase = 5;
+  Price rental_price = 6;
+  Price purchase_price = 7;
+}
+
+message Price {
+  string currency = 1;
+  float amount = 2;
+  string formatted = 3;
+}
+
+message StreamingInfo {
+  string stream_url = 1;
+  Quality quality = 2;
+  repeated Subtitle subtitles = 3;
+  repeated AudioTrack audio_tracks = 4;
+}
+
+enum Quality {
+  QUALITY_UNSPECIFIED = 0;
+  SD = 1;
+  HD = 2;
+  FULL_HD = 3;
+  ULTRA_HD = 4;
+  HDR = 5;
+  DOLBY_VISION = 6;
+}
+
+message Subtitle {
+  string language = 1;
+  string language_code = 2;
+  string url = 3;
+  SubtitleFormat format = 4;
+}
+
+enum SubtitleFormat {
+  SUBTITLE_FORMAT_UNSPECIFIED = 0;
+  SRT = 1;
+  VTT = 2;
+  ASS = 3;
+}
+
+message AudioTrack {
+  string language = 1;
+  string language_code = 2;
+  AudioFormat format = 3;
+}
+
+enum AudioFormat {
+  AUDIO_FORMAT_UNSPECIFIED = 0;
+  STEREO = 1;
+  SURROUND_5_1 = 2;
+  SURROUND_7_1 = 3;
+  DOLBY_ATMOS = 4;
+}
+
+// ============================================================================
+// Content Details
+// ============================================================================
+
+message ContentDetailsRequest {
+  string content_id = 1;
+  string platform = 2;
+  bool include_episodes = 3;
+  bool include_reviews = 4;
+  bool include_similar = 5;
+}
+
+message ContentDetailsResponse {
+  ContentItem content = 1;
+  TVSeriesDetails series_details = 2;
+  repeated Episode episodes = 3;
+  repeated Review reviews = 4;
+  repeated ContentItem similar = 5;
+  repeated string trailers = 6;
+  PersonalizedData personalized = 7;
+}
+
+message TVSeriesDetails {
+  int32 num_seasons = 1;
+  int32 num_episodes = 2;
+  repeated Season seasons = 3;
+  string status = 4;  // Ongoing, Completed, Cancelled
+  int64 first_aired = 5;
+  int64 last_aired = 6;
+}
+
+message Season {
+  int32 season_number = 1;
+  int32 episode_count = 2;
+  int64 air_date = 3;
+  string poster_url = 4;
+}
+
+message Episode {
+  string id = 1;
+  int32 season_number = 2;
+  int32 episode_number = 3;
+  string title = 4;
+  string description = 5;
+  int32 runtime_minutes = 6;
+  int64 air_date = 7;
+  float rating = 8;
+  string thumbnail_url = 9;
+}
+
+message Review {
+  string author = 1;
+  string content = 2;
+  float rating = 3;
+  int64 created_at = 4;
+  string source = 5;
+}
+
+message PersonalizedData {
+  bool in_watchlist = 1;
+  bool in_queue = 2;
+  WatchProgress watch_progress = 3;
+  float predicted_rating = 4;
+}
+
+message WatchProgress {
+  int32 current_episode = 1;
+  int32 current_season = 2;
+  int32 progress_seconds = 3;
+  int32 total_seconds = 4;
+  float progress_percent = 5;
+  int64 last_watched = 6;
+}
+
+// ============================================================================
+// Browse Operations
+// ============================================================================
+
+message BrowseRequest {
+  BrowseType type = 1;
+  string category = 2;
+  int32 days = 3;
+  BrowseOptions options = 4;
+  string user_id = 5;
+}
+
+enum BrowseType {
+  BROWSE_TYPE_UNSPECIFIED = 0;
+  TRENDING = 1;
+  NEW_RELEASES = 2;
+  EXPIRING_SOON = 3;
+  TOP_RATED = 4;
+  POPULAR = 5;
+}
+
+message BrowseOptions {
+  repeated string platforms = 1;
+  repeated string genres = 2;
+  int32 limit = 3;
+  int32 offset = 4;
+  SortOrder sort = 5;
+}
+
+message BrowseResponse {
+  oneof response {
+    BrowseChunk chunk = 1;
+    BrowseComplete complete = 2;
+  }
+}
+
+message BrowseChunk {
+  repeated ContentItem items = 1;
+  int32 total_count = 2;
+  bool has_more = 3;
+}
+
+message BrowseComplete {
+  int32 total_results = 1;
+  float duration_seconds = 2;
+}
+
+message CategoryRequest {
+  string category_id = 1;
+  string category_name = 2;
+  BrowseOptions options = 3;
+}
+
+// ============================================================================
+// Recommendations
+// ============================================================================
+
+message RecommendationRequest {
+  string user_id = 1;
+  RecommendationType type = 2;
+  string mood = 3;
+  RecommendationOptions options = 4;
+}
+
+enum RecommendationType {
+  RECOMMENDATION_TYPE_UNSPECIFIED = 0;
+  PERSONALIZED = 1;
+  MOOD_BASED = 2;
+  SOCIAL = 3;
+  TRENDING_FOR_YOU = 4;
+  CONTINUE_WATCHING = 5;
+}
+
+message RecommendationOptions {
+  int32 max_results = 1;
+  repeated string platforms = 2;
+  bool exclude_watched = 3;
+  float min_confidence = 4;
+}
+
+message RecommendationResponse {
+  oneof response {
+    RecommendationChunk chunk = 1;
+    RecommendationComplete complete = 2;
+  }
+}
+
+message RecommendationChunk {
+  repeated RecommendedContent items = 1;
+  string recommendation_source = 2;
+}
+
+message RecommendedContent {
+  ContentItem content = 1;
+  float confidence_score = 2;
+  repeated string reasons = 3;
+  string recommendation_algorithm = 4;
+}
+
+message RecommendationComplete {
+  int32 total_recommendations = 1;
+  float duration_seconds = 2;
+}
+
+message SimilarContentRequest {
+  string content_id = 1;
+  int32 max_results = 2;
+  SimilarityType similarity_type = 3;
+}
+
+enum SimilarityType {
+  SIMILARITY_TYPE_UNSPECIFIED = 0;
+  CONTENT_BASED = 1;
+  COLLABORATIVE = 2;
+  HYBRID = 3;
+}
+
+message SimilarContentResponse {
+  oneof response {
+    SimilarContentChunk chunk = 1;
+    SimilarContentComplete complete = 2;
+  }
+}
+
+message SimilarContentChunk {
+  repeated SimilarContent items = 1;
+}
+
+message SimilarContent {
+  ContentItem content = 1;
+  float similarity_score = 2;
+  repeated string matching_attributes = 3;
+}
+
+message SimilarContentComplete {
+  int32 total_results = 1;
+}
+
+// ============================================================================
+// Watch Management
+// ============================================================================
+
+message WatchQueueRequest {
+  string user_id = 1;
+}
+
+message WatchQueueResponse {
+  repeated QueueItem items = 1;
+  int32 total_count = 2;
+  int64 updated_at = 3;
+}
+
+message QueueItem {
+  string id = 1;
+  ContentItem content = 2;
+  int32 position = 3;
+  int64 added_at = 4;
+  WatchProgress progress = 5;
+}
+
+message AddToQueueRequest {
+  string user_id = 1;
+  string content_id = 2;
+  int32 position = 3;  // 0 = front, -1 = back
+}
+
+message RemoveFromQueueRequest {
+  string user_id = 1;
+  string queue_item_id = 2;
+}
+
+message ClearQueueRequest {
+  string user_id = 1;
+}
+
+message WatchListRequest {
+  string user_id = 1;
+}
+
+message WatchListResponse {
+  repeated WatchListItem items = 1;
+  int32 total_count = 2;
+}
+
+message WatchListItem {
+  string id = 1;
+  ContentItem content = 2;
+  int64 added_at = 3;
+  WatchProgress progress = 4;
+  repeated string tags = 5;
+}
+
+message AddToWatchListRequest {
+  string user_id = 1;
+  string content_id = 2;
+  repeated string tags = 3;
+}
+
+message RemoveFromWatchListRequest {
+  string user_id = 1;
+  string watchlist_item_id = 2;
+}
+
+// ============================================================================
+// Device Service - Device management and casting
+// ============================================================================
+
+service DeviceService {
+  rpc ListDevices(ListDevicesRequest) returns (ListDevicesResponse);
+  rpc RegisterDevice(RegisterDeviceRequest) returns (RegisterDeviceResponse);
+  rpc UnregisterDevice(UnregisterDeviceRequest) returns (UnregisterDeviceResponse);
+  rpc ConnectDevice(ConnectDeviceRequest) returns (ConnectDeviceResponse);
+  rpc DisconnectDevice(DisconnectDeviceRequest) returns (DisconnectDeviceResponse);
+  rpc CastContent(CastContentRequest) returns (stream CastContentResponse);
+  rpc GetDeviceStatus(DeviceStatusRequest) returns (DeviceStatusResponse);
+  rpc SyncDevices(SyncDevicesRequest) returns (SyncDevicesResponse);
+}
+
+message ListDevicesRequest {
+  string user_id = 1;
+  bool include_offline = 2;
+}
+
+message ListDevicesResponse {
+  repeated Device devices = 1;
+}
+
+message Device {
+  string id = 1;
+  string name = 2;
+  DeviceType type = 3;
+  string manufacturer = 4;
+  string model = 5;
+  DeviceStatus status = 6;
+  repeated DeviceCapability capabilities = 7;
+  string ip_address = 8;
+  int64 last_seen = 9;
+}
+
+enum DeviceType {
+  DEVICE_TYPE_UNSPECIFIED = 0;
+  SMART_TV = 1;
+  STREAMING_STICK = 2;
+  GAME_CONSOLE = 3;
+  MOBILE = 4;
+  TABLET = 5;
+  COMPUTER = 6;
+  CHROMECAST = 7;
+  APPLE_TV = 8;
+  ROKU = 9;
+  FIRE_TV = 10;
+}
+
+enum DeviceStatus {
+  DEVICE_STATUS_UNSPECIFIED = 0;
+  ONLINE = 1;
+  OFFLINE = 2;
+  BUSY = 3;
+  IDLE = 4;
+  CASTING = 5;
+}
+
+enum DeviceCapability {
+  DEVICE_CAPABILITY_UNSPECIFIED = 0;
+  CAST = 1;
+  STREAM = 2;
+  DOWNLOAD = 3;
+  OFFLINE_PLAYBACK = 4;
+  DOLBY_VISION = 5;
+  HDR10 = 6;
+  DOLBY_ATMOS = 7;
+}
+
+message RegisterDeviceRequest {
+  string user_id = 1;
+  string device_name = 2;
+  DeviceType device_type = 3;
+  string device_token = 4;
+}
+
+message RegisterDeviceResponse {
+  Device device = 1;
+}
+
+message UnregisterDeviceRequest {
+  string user_id = 1;
+  string device_id = 2;
+}
+
+message UnregisterDeviceResponse {
+  bool success = 1;
+}
+
+message ConnectDeviceRequest {
+  string user_id = 1;
+  string device_id = 2;
+}
+
+message ConnectDeviceResponse {
+  Device device = 1;
+  string session_id = 2;
+}
+
+message DisconnectDeviceRequest {
+  string user_id = 1;
+  string device_id = 2;
+  string session_id = 3;
+}
+
+message DisconnectDeviceResponse {
+  bool success = 1;
+}
+
+message CastContentRequest {
+  string user_id = 1;
+  string device_id = 2;
+  string content_id = 3;
+  int32 start_position_seconds = 4;
+  Quality preferred_quality = 5;
+}
+
+message CastContentResponse {
+  oneof response {
+    CastProgress progress = 1;
+    CastComplete complete = 2;
+    CastError error = 3;
+  }
+}
+
+message CastProgress {
+  CastStatus status = 1;
+  float progress_percent = 2;
+  string message = 3;
+}
+
+enum CastStatus {
+  CAST_STATUS_UNSPECIFIED = 0;
+  INITIALIZING = 1;
+  BUFFERING = 2;
+  PLAYING = 3;
+  PAUSED = 4;
+  STOPPED = 5;
+}
+
+message CastComplete {
+  bool success = 1;
+  string session_id = 2;
+}
+
+message CastError {
+  string error_code = 1;
+  string message = 2;
+}
+
+message DeviceStatusRequest {
+  string device_id = 1;
+}
+
+message DeviceStatusResponse {
+  Device device = 1;
+  PlaybackState playback = 2;
+}
+
+message PlaybackState {
+  string content_id = 1;
+  string content_title = 2;
+  int32 position_seconds = 3;
+  int32 duration_seconds = 4;
+  CastStatus status = 5;
+  float volume = 6;
+}
+
+message SyncDevicesRequest {
+  string user_id = 1;
+}
+
+message SyncDevicesResponse {
+  repeated Device synced_devices = 1;
+  int32 devices_added = 2;
+  int32 devices_removed = 3;
+}
+
+// ============================================================================
+// Account Service - Account linking and management
+// ============================================================================
+
+service AccountService {
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+  rpc LinkAccount(LinkAccountRequest) returns (LinkAccountResponse);
+  rpc UnlinkAccount(UnlinkAccountRequest) returns (UnlinkAccountResponse);
+  rpc GetAccountStatus(AccountStatusRequest) returns (AccountStatusResponse);
+  rpc RefreshAccountData(RefreshAccountDataRequest) returns (RefreshAccountDataResponse);
+}
+
+message ListAccountsRequest {
+  string user_id = 1;
+}
+
+message ListAccountsResponse {
+  repeated LinkedAccount accounts = 1;
+}
+
+message LinkedAccount {
+  string id = 1;
+  string provider = 2;
+  string account_name = 3;
+  AccountStatus status = 4;
+  repeated string enabled_features = 5;
+  int64 linked_at = 6;
+  int64 last_synced = 7;
+  SubscriptionInfo subscription = 8;
+}
+
+enum AccountStatus {
+  ACCOUNT_STATUS_UNSPECIFIED = 0;
+  ACTIVE = 1;
+  INACTIVE = 2;
+  EXPIRED = 3;
+  REQUIRES_REAUTH = 4;
+  ERROR = 5;
+}
+
+message SubscriptionInfo {
+  string tier = 1;
+  int64 expires_at = 2;
+  bool auto_renew = 3;
+  repeated string features = 4;
+}
+
+message LinkAccountRequest {
+  string user_id = 1;
+  string provider = 2;
+  string auth_code = 3;
+  string redirect_uri = 4;
+}
+
+message LinkAccountResponse {
+  LinkedAccount account = 1;
+}
+
+message UnlinkAccountRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message UnlinkAccountResponse {
+  bool success = 1;
+}
+
+message AccountStatusRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message AccountStatusResponse {
+  LinkedAccount account = 1;
+  AccountHealth health = 2;
+}
+
+message AccountHealth {
+  bool is_healthy = 1;
+  repeated string issues = 2;
+  int64 last_successful_sync = 3;
+}
+
+message RefreshAccountDataRequest {
+  string user_id = 1;
+  string account_id = 2;
+}
+
+message RefreshAccountDataResponse {
+  bool success = 1;
+  int64 synced_at = 2;
+  int32 items_synced = 3;
+}
+
+// ============================================================================
+// Preferences Service
+// ============================================================================
+
+service PreferencesService {
+  rpc GetPreferences(GetPreferencesRequest) returns (GetPreferencesResponse);
+  rpc UpdatePreferences(UpdatePreferencesRequest) returns (UpdatePreferencesResponse);
+  rpc GetGenrePreferences(GetGenrePreferencesRequest) returns (GetGenrePreferencesResponse);
+  rpc UpdateGenrePreferences(UpdateGenrePreferencesRequest) returns (UpdateGenrePreferencesResponse);
+  rpc GetPlatformPreferences(GetPlatformPreferencesRequest) returns (GetPlatformPreferencesResponse);
+  rpc UpdatePlatformPreferences(UpdatePlatformPreferencesRequest) returns (UpdatePlatformPreferencesResponse);
+  rpc ExportPreferences(ExportPreferencesRequest) returns (ExportPreferencesResponse);
+  rpc ImportPreferences(ImportPreferencesRequest) returns (ImportPreferencesResponse);
+}
+
+message GetPreferencesRequest {
+  string user_id = 1;
+}
+
+message GetPreferencesResponse {
+  UserPreferences preferences = 1;
+}
+
+message UserPreferences {
+  repeated string favorite_genres = 1;
+  repeated string preferred_platforms = 2;
+  repeated string preferred_languages = 3;
+  string region = 4;
+  ContentPreferences content = 5;
+  UIPreferences ui = 6;
+  NotificationPreferences notifications = 7;
+}
+
+message ContentPreferences {
+  bool include_adult_content = 1;
+  repeated string excluded_genres = 2;
+  repeated string excluded_platforms = 3;
+  float min_rating = 4;
+  int32 max_runtime_minutes = 5;
+  repeated string content_ratings = 6;
+}
+
+message UIPreferences {
+  string theme = 1;
+  string language = 2;
+  bool show_spoilers = 3;
+  bool auto_play_trailers = 4;
+  int32 results_per_page = 5;
+}
+
+message NotificationPreferences {
+  bool new_releases = 1;
+  bool price_drops = 2;
+  bool expiring_content = 3;
+  bool recommendations = 4;
+  string notification_channel = 5;
+}
+
+message UpdatePreferencesRequest {
+  string user_id = 1;
+  UserPreferences preferences = 2;
+}
+
+message UpdatePreferencesResponse {
+  UserPreferences preferences = 1;
+}
+
+message GetGenrePreferencesRequest {
+  string user_id = 1;
+}
+
+message GetGenrePreferencesResponse {
+  repeated GenrePreference genres = 1;
+}
+
+message GenrePreference {
+  string genre = 1;
+  float preference_score = 2;
+  int32 view_count = 3;
+}
+
+message UpdateGenrePreferencesRequest {
+  string user_id = 1;
+  repeated string add_genres = 2;
+  repeated string remove_genres = 3;
+}
+
+message UpdateGenrePreferencesResponse {
+  repeated GenrePreference genres = 1;
+}
+
+message GetPlatformPreferencesRequest {
+  string user_id = 1;
+}
+
+message GetPlatformPreferencesResponse {
+  repeated PlatformPreference platforms = 1;
+}
+
+message PlatformPreference {
+  string platform = 1;
+  int32 priority = 2;
+  bool enabled = 3;
+}
+
+message UpdatePlatformPreferencesRequest {
+  string user_id = 1;
+  repeated string add_platforms = 2;
+  repeated string remove_platforms = 3;
+  map<string, int32> platform_priorities = 4;
+}
+
+message UpdatePlatformPreferencesResponse {
+  repeated PlatformPreference platforms = 1;
+}
+
+message ExportPreferencesRequest {
+  string user_id = 1;
+  ExportFormat format = 2;
+}
+
+enum ExportFormat {
+  EXPORT_FORMAT_UNSPECIFIED = 0;
+  JSON = 1;
+  YAML = 2;
+  TOML = 3;
+}
+
+message ExportPreferencesResponse {
+  string data = 1;
+  ExportFormat format = 2;
+}
+
+message ImportPreferencesRequest {
+  string user_id = 1;
+  string data = 2;
+  ExportFormat format = 3;
+  bool merge = 4;
+}
+
+message ImportPreferencesResponse {
+  bool success = 1;
+  UserPreferences preferences = 2;
+}
