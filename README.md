@@ -424,57 +424,126 @@ Media Gateway integrates the **SONA (Self-Optimizing Neural Architecture)** from
 
 ## Repository Structure
 
+This research repository contains architecture documentation for the Media Gateway platform:
+
 ```
-media-gateway/
+media-gateway-hackathon-research/
 ├── research/                    # Architecture documentation
 │   ├── FINAL_ARCHITECTURE_BLUEPRINT.md
+│   ├── SONA_INTEGRATION_SPECIFICATION.md
+│   ├── HACKATHON_TV5_INTEGRATION.md
+│   ├── E2B_SANDBOX_INTEGRATION.md
 │   ├── GCP_DEPLOYMENT_ARCHITECTURE.md
-│   ├── ARCHITECTURE_BLUEPRINT.md
-│   ├── streaming-platform-research.md
-│   ├── RUVECTOR_KNOWLEDGE_GRAPH_SPEC.md
 │   └── ...
-├── terraform/                   # Infrastructure as Code (planned)
-│   ├── environments/
-│   └── modules/
-├── k8s/                         # Kubernetes manifests (planned)
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-### Planned Repository Layout
+### Multi-Repository Architecture
 
-The full implementation will follow a multi-repository structure:
+The Media Gateway platform is implemented as **51 independent micro-repositories** rather than a monorepo. This enables independent versioning, separate CI/CD pipelines, and parallel development.
+
+#### Repository Organization
 
 ```
-tv-discovery/
-├── layer-1/
-│   ├── ingestion/               # MCP connectors for each platform
-│   ├── processing/              # Normalizers, entity resolver, semantic tagger
-│   ├── validation/              # Rights validator, trust scorer
-│   ├── identity/                # Auth service (OAuth2/PKCE, Device Grant)
-│   ├── device/                  # Device gateway, sync engine (CRDT)
-│   ├── cli/                     # CLI core and unified application
-│   └── simulation/              # Mock APIs and synthetic data
-├── layer-2/
-│   ├── agent-orchestrator/      # Claude-Flow integration
-│   ├── recommendation-engine/   # Hybrid GNN recommendations
-│   ├── semantic-search/         # Vector + graph search
-│   └── memory/                  # AgentDB, ReasoningBank
-├── layer-3/
-│   ├── metadata-fabric/         # Global unified metadata
-│   ├── availability-index/      # Cross-platform availability
-│   ├── rights-engine/           # Rights aggregation
-│   └── personalization-engine/  # Federated learning
-├── layer-4/
-│   ├── cli-app/                 # Production CLI
-│   ├── web-app/                 # Next.js web client
-│   └── tv-apps/                 # Samsung Tizen, LG webOS, Roku
-└── infrastructure/
-    ├── terraform/               # GCP infrastructure
-    ├── k8s/                     # Kubernetes manifests
-    ├── proto/                   # gRPC definitions
-    └── sdk-rust/                # Rust SDK
+github.com/globalbusinessadvisors/
+│
+├── FOUNDATION (3 repos)
+│   ├── mg-proto                 # gRPC/Protobuf definitions
+│   ├── mg-sdk-rust              # Core Rust SDK
+│   └── mg-config                # Shared configuration
+│
+├── LAYER 1: INGESTION (14 repos)
+│   ├── mg-ingestion-core        # MCP connector framework
+│   ├── mg-connector-aggregator  # JustWatch/Watchmode/StreamingAvailability
+│   ├── mg-connector-netflix     # Netflix via aggregators
+│   ├── mg-connector-prime       # Prime Video
+│   ├── mg-connector-disney      # Disney+
+│   ├── mg-connector-*           # ... (10 platform connectors)
+│   ├── mg-metadata-normalizer   # Platform → Unified schema
+│   └── mg-entity-resolver       # EIDR/IMDb/TMDb deduplication
+│
+├── LAYER 1: IDENTITY (3 repos)
+│   ├── mg-auth-service          # OAuth2/PKCE + Device Grant
+│   ├── mg-token-service         # JWT management
+│   └── mg-session-service       # Cross-device sessions
+│
+├── LAYER 1: DEVICE (3 repos)
+│   ├── mg-device-gateway        # WebSocket hub + PubNub
+│   ├── mg-sync-engine           # CRDT-based sync
+│   └── mg-device-adapters       # Tizen, webOS, Roku, Chromecast
+│
+├── LAYER 2: INTELLIGENCE (8 repos)
+│   ├── mg-agent-orchestrator    # Claude-Flow + 9 specialized agents
+│   ├── mg-recommendation-engine # Hybrid GNN recommendations
+│   ├── mg-semantic-search       # Vector + Graph search
+│   ├── mg-embedding-service     # Content embeddings
+│   ├── mg-sona-client           # SONA intelligence (LoRA, EWC++, 39 attention)
+│   ├── mg-reasoning-bank        # Reasoning pattern storage
+│   ├── mg-agent-db              # Agent context storage (Redis)
+│   └── mg-e2b-client            # E2B sandbox client
+│
+├── LAYER 3: CONSOLIDATION (5 repos)
+│   ├── mg-metadata-fabric       # Global unified metadata
+│   ├── mg-availability-index    # Cross-platform availability
+│   ├── mg-rights-engine         # Rights aggregation
+│   ├── mg-personalization-engine # Privacy-safe personalization
+│   └── mg-search-api            # Unified search API
+│
+├── LAYER 4: APPLICATIONS (6 repos)
+│   ├── mg-cli                   # Developer/Operator CLI (Rust TUI)
+│   ├── mg-web-app               # Next.js web application
+│   ├── mg-mobile-ios            # iOS application (Swift)
+│   ├── mg-mobile-android        # Android application (Kotlin)
+│   ├── mg-tv-tizen              # Samsung Tizen app
+│   └── mg-tv-webos              # LG webOS app
+│
+├── DATA LAYER (2 repos)
+│   ├── mg-ruvector-client       # Ruvector Rust client
+│   └── mg-pubnub-client         # PubNub Rust client wrapper
+│
+├── INFRASTRUCTURE (4 repos)
+│   ├── mg-terraform             # Terraform modules (GKE, Cloud Run, etc.)
+│   ├── mg-helm-charts           # Helm charts
+│   ├── mg-docker                # Dockerfiles and compose
+│   └── mg-ci-templates          # Shared CI/CD workflows
+│
+├── TESTING (2 repos)
+│   ├── mg-test-utils            # Shared test utilities
+│   └── mg-simulator             # Simulation & mock APIs
+│
+└── DOCUMENTATION (1 repo)
+    └── mg-docs                  # Documentation site (Docusaurus)
+```
+
+#### Repository Count by Category
+
+| Category | Repos | Purpose |
+|----------|-------|---------|
+| Foundation | 3 | Proto, SDK, Config |
+| Layer 1 - Ingestion | 14 | MCP connectors |
+| Layer 1 - Identity | 3 | Auth, tokens |
+| Layer 1 - Device | 3 | Sync, adapters |
+| Layer 2 - Intelligence | 8 | AI/ML services |
+| Layer 3 - Consolidation | 5 | Aggregation |
+| Layer 4 - Applications | 6 | End-user apps |
+| Data Layer | 2 | Data clients |
+| Infrastructure | 4 | DevOps |
+| Testing | 2 | QA |
+| Documentation | 1 | Docs |
+| **Total** | **51** | |
+
+#### Dependency Flow
+
+```
+mg-proto → mg-sdk-rust → mg-ingestion-core → mg-connector-*
+                      ↓
+              mg-ruvector-client → mg-sona-client
+                      ↓
+              mg-agent-orchestrator → mg-recommendation-engine
+                      ↓
+              mg-search-api → mg-cli / mg-web-app / mg-tv-*
 ```
 
 ---

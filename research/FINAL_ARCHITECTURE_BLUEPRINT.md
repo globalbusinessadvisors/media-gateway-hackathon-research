@@ -122,97 +122,488 @@ This document presents the complete architecture blueprint for a **global, cross
 
 ## 2. Layer-1: Micro-Repository Ecosystem
 
-### 2.1 Repository Structure
+### 2.1 Multi-Repository Architecture
+
+The Media Gateway platform is organized as **independent micro-repositories** rather than a monorepo. This enables:
+- Independent versioning and release cycles
+- Separate CI/CD pipelines per component
+- Team autonomy and parallel development
+- Flexible deployment (deploy only what changes)
+- Clear dependency boundaries via published crates/packages
+
+#### Repository Organization
 
 ```
-tv-discovery/
-├── layer-1/
-│   ├── ingestion/
-│   │   ├── ingestion-core/              # Core MCP connector traits
-│   │   ├── ingestion-netflix-mcp/       # Netflix via aggregators
-│   │   ├── ingestion-prime-mcp/         # Prime Video via aggregators
-│   │   ├── ingestion-disney-mcp/        # Disney+ via aggregators
-│   │   ├── ingestion-hulu-mcp/          # Hulu via aggregators
-│   │   ├── ingestion-apple-mcp/         # Apple TV+ via aggregators
-│   │   ├── ingestion-youtube-mcp/       # YouTube (real API)
-│   │   ├── ingestion-crave-mcp/         # Crave (Canada)
-│   │   ├── ingestion-hbomax-mcp/        # HBO Max via aggregators
-│   │   ├── ingestion-peacock-mcp/       # Peacock via aggregators
-│   │   ├── ingestion-paramount-mcp/     # Paramount+ via aggregators
-│   │   └── ingestion-aggregator-mcp/    # JustWatch/Watchmode/StreamingAvailability
-│   │
-│   ├── processing/
-│   │   ├── metadata-normalizer/         # Platform → Unified schema
-│   │   ├── entity-resolver/             # EIDR/IMDb/TMDb deduplication
-│   │   └── semantic-tagger/             # Mood/theme extraction
-│   │
-│   ├── validation/
-│   │   ├── rights-validator/            # Regional availability
-│   │   └── trust-scorer/                # Data quality scoring
-│   │
-│   ├── identity/
-│   │   ├── auth-service/                # OAuth2/PKCE + Device Grant
-│   │   ├── token-service/               # JWT management
-│   │   └── session-service/             # Cross-device sessions
-│   │
-│   ├── device/
-│   │   ├── device-gateway/              # WebSocket hub
-│   │   ├── device-adapters/             # Platform-specific adapters
-│   │   └── sync-engine/                 # CRDT-based sync
-│   │
-│   ├── cli/
-│   │   ├── cli-core/                    # Shared CLI components
-│   │   └── cli-unified/                 # Main CLI application
-│   │
-│   └── simulation/
-│       ├── catalog-simulator/           # Synthetic data generator
-│       └── aggregator-mock/             # Mock APIs for testing
+github.com/globalbusinessadvisors/
 │
-├── layer-2/
-│   ├── agent-orchestrator/              # Claude-Flow integration
-│   ├── recommendation-engine/           # Hybrid recommendations
-│   ├── semantic-search/                 # Vector + Graph search
-│   ├── embedding-service/               # Content embeddings
-│   ├── cross-platform-orchestrator/     # Multi-platform coordination
-│   └── memory/
-│       ├── agent-db/                    # Redis-backed context
-│       └── reasoning-bank/              # Pattern storage
+├── FOUNDATION REPOSITORIES (Build First)
+│   │
+│   ├── mg-proto/                        # gRPC/Protobuf definitions
+│   │   ├── proto/
+│   │   │   ├── content.proto            # Content metadata schemas
+│   │   │   ├── search.proto             # Search request/response
+│   │   │   ├── recommendation.proto     # Recommendation types
+│   │   │   ├── availability.proto       # Platform availability
+│   │   │   ├── user.proto               # User profiles and prefs
+│   │   │   └── agent.proto              # Agent communication
+│   │   ├── generated/                   # Auto-generated code
+│   │   │   ├── rust/
+│   │   │   ├── typescript/
+│   │   │   └── python/
+│   │   └── Cargo.toml                   # Publish as mg-proto crate
+│   │
+│   ├── mg-sdk-rust/                     # Core Rust SDK
+│   │   ├── src/
+│   │   │   ├── types/                   # Shared domain types
+│   │   │   ├── errors/                  # Error types and handling
+│   │   │   ├── traits/                  # Core traits (MCPConnector, etc.)
+│   │   │   ├── client/                  # HTTP/gRPC client utilities
+│   │   │   └── telemetry/               # Logging, tracing, metrics
+│   │   ├── Cargo.toml                   # Publish as mg-sdk crate
+│   │   └── README.md
+│   │
+│   └── mg-config/                       # Shared configuration
+│       ├── schemas/                     # JSON Schema definitions
+│       ├── defaults/                    # Default config files
+│       └── validation/                  # Config validation logic
 │
-├── layer-3/
-│   ├── metadata-fabric/                 # Global unified metadata
-│   ├── availability-index/              # Cross-platform availability
-│   ├── rights-engine/                   # Rights aggregation
-│   ├── personalization-engine/          # Privacy-safe personalization
-│   └── search-services/                 # Unified search API
+├── LAYER 1: DATA INGESTION (14 repos)
+│   │
+│   ├── mg-ingestion-core/               # MCP connector framework
+│   │   ├── src/
+│   │   │   ├── connector.rs             # MCPConnector trait
+│   │   │   ├── rate_limiter.rs          # Rate limiting
+│   │   │   ├── retry.rs                 # Retry logic
+│   │   │   └── health.rs                # Health checks
+│   │   ├── Cargo.toml                   # Depends on: mg-sdk-rust, mg-proto
+│   │   └── README.md
+│   │
+│   ├── mg-connector-aggregator/         # JustWatch/Watchmode/StreamingAvailability
+│   │   ├── src/
+│   │   │   ├── justwatch.rs
+│   │   │   ├── watchmode.rs
+│   │   │   └── streaming_availability.rs
+│   │   ├── Cargo.toml                   # Depends on: mg-ingestion-core
+│   │   └── README.md
+│   │
+│   ├── mg-connector-netflix/            # Netflix via aggregators
+│   ├── mg-connector-prime/              # Prime Video
+│   ├── mg-connector-disney/             # Disney+
+│   ├── mg-connector-hulu/               # Hulu
+│   ├── mg-connector-apple/              # Apple TV+
+│   ├── mg-connector-youtube/            # YouTube (real API)
+│   ├── mg-connector-crave/              # Crave (Canada)
+│   ├── mg-connector-hbomax/             # HBO Max
+│   ├── mg-connector-peacock/            # Peacock
+│   ├── mg-connector-paramount/          # Paramount+
+│   │
+│   ├── mg-metadata-normalizer/          # Platform → Unified schema
+│   │   ├── src/
+│   │   │   ├── normalizer.rs            # Normalization logic
+│   │   │   ├── schemas/                 # Platform-specific schemas
+│   │   │   └── unified.rs               # Unified content schema
+│   │   └── Cargo.toml                   # Depends on: mg-sdk-rust
+│   │
+│   └── mg-entity-resolver/              # EIDR/IMDb/TMDb deduplication
+│       ├── src/
+│       │   ├── resolver.rs              # Entity resolution logic
+│       │   ├── matchers/                # Fuzzy matching algorithms
+│       │   └── identifiers.rs           # External ID handling
+│       └── Cargo.toml                   # Depends on: mg-sdk-rust
 │
-├── layer-4/
-│   ├── cli-app/                         # Production CLI
-│   ├── web-app/                         # Next.js web client
-│   ├── mobile-ios/                      # iOS app
-│   ├── mobile-android/                  # Android app
-│   └── tv-apps/
-│       ├── samsung-tizen/
-│       ├── lg-webos/
-│       └── roku/
+├── LAYER 1: IDENTITY & AUTH (3 repos)
+│   │
+│   ├── mg-auth-service/                 # OAuth2/PKCE + Device Grant
+│   │   ├── src/
+│   │   │   ├── oauth2.rs                # OAuth2 flows
+│   │   │   ├── pkce.rs                  # PKCE implementation
+│   │   │   ├── device_grant.rs          # RFC 8628 Device Grant
+│   │   │   └── providers/               # Platform-specific auth
+│   │   ├── Cargo.toml                   # Depends on: mg-sdk-rust
+│   │   └── README.md
+│   │
+│   ├── mg-token-service/                # JWT management
+│   │   ├── src/
+│   │   │   ├── jwt.rs                   # JWT creation/validation
+│   │   │   ├── refresh.rs               # Token refresh logic
+│   │   │   └── storage.rs               # Secure token storage
+│   │   └── Cargo.toml
+│   │
+│   └── mg-session-service/              # Cross-device sessions
+│       ├── src/
+│       │   ├── session.rs               # Session management
+│       │   └── sync.rs                  # Cross-device sync
+│       └── Cargo.toml
 │
-├── infrastructure/
-│   ├── packages/
-│   │   ├── proto/                       # gRPC definitions
-│   │   ├── sdk-rust/                    # Rust SDK
-│   │   └── ruvector-client/             # Ruvector bindings
-│   ├── deploy/
-│   │   ├── kubernetes/
-│   │   ├── helm/
-│   │   └── terraform/
-│   └── tools/
-│       └── testing/
+├── LAYER 1: DEVICE SYNC (3 repos)
+│   │
+│   ├── mg-device-gateway/               # WebSocket hub
+│   │   ├── src/
+│   │   │   ├── websocket.rs             # WebSocket server
+│   │   │   ├── pubsub.rs                # PubNub integration
+│   │   │   └── presence.rs              # Device presence
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-sync-engine/                  # CRDT-based sync
+│   │   ├── src/
+│   │   │   ├── crdt.rs                  # CRDT implementations
+│   │   │   ├── conflict.rs              # Conflict resolution
+│   │   │   └── watchlist.rs             # Watchlist sync
+│   │   └── Cargo.toml
+│   │
+│   └── mg-device-adapters/              # Platform-specific adapters
+│       ├── src/
+│       │   ├── tizen.rs                 # Samsung Tizen
+│       │   ├── webos.rs                 # LG webOS
+│       │   ├── roku.rs                  # Roku
+│       │   └── chromecast.rs            # Chromecast
+│       └── Cargo.toml
 │
-└── integrations/
-    ├── hackathon-tv5/                   # Integration layer
-    └── pubnub-client/                   # PubNub SDK wrapper
+├── LAYER 2: INTELLIGENCE (8 repos)
+│   │
+│   ├── mg-agent-orchestrator/           # Claude-Flow integration
+│   │   ├── src/
+│   │   │   ├── orchestrator.rs          # SPARC methodology
+│   │   │   ├── agents/                  # 9 specialized agents
+│   │   │   │   ├── swarm_lead.rs
+│   │   │   │   ├── content_searcher.rs
+│   │   │   │   ├── recommendation_builder.rs
+│   │   │   │   ├── availability_checker.rs
+│   │   │   │   ├── device_coordinator.rs
+│   │   │   │   ├── context_keeper.rs
+│   │   │   │   ├── pattern_learner.rs
+│   │   │   │   ├── result_merger.rs
+│   │   │   │   └── quality_assurer.rs
+│   │   │   └── tools/                   # Agent tools
+│   │   ├── Cargo.toml                   # Depends on: mg-sdk-rust, mg-e2b-client
+│   │   └── README.md
+│   │
+│   ├── mg-recommendation-engine/        # Hybrid GNN recommendations
+│   │   ├── src/
+│   │   │   ├── engine.rs                # Main recommendation engine
+│   │   │   ├── collaborative.rs         # Collaborative filtering
+│   │   │   ├── content_based.rs         # Content-based filtering
+│   │   │   ├── gnn.rs                   # GraphSAGE integration
+│   │   │   ├── fusion.rs                # RRF fusion
+│   │   │   └── diversity.rs             # MMR diversity
+│   │   └── Cargo.toml                   # Depends on: mg-ruvector-client, mg-sona-client
+│   │
+│   ├── mg-semantic-search/              # Vector + Graph search
+│   │   ├── src/
+│   │   │   ├── search.rs                # Unified search interface
+│   │   │   ├── vector.rs                # HNSW vector search
+│   │   │   ├── graph.rs                 # Graph traversal
+│   │   │   └── hybrid.rs                # Hybrid search
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-embedding-service/            # Content embeddings
+│   │   ├── src/
+│   │   │   ├── embedder.rs              # Embedding generation
+│   │   │   ├── models/                  # Embedding models
+│   │   │   └── cache.rs                 # Embedding cache
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-sona-client/                  # SONA intelligence client
+│   │   ├── src/
+│   │   │   ├── client.rs                # SONA API client
+│   │   │   ├── lora.rs                  # Two-Tier LoRA adapters
+│   │   │   ├── ewc.rs                   # EWC++ anti-forgetting
+│   │   │   ├── attention.rs             # 39 attention mechanisms
+│   │   │   └── tiny_dancer.rs           # Semantic routing
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-reasoning-bank/               # Reasoning pattern storage
+│   │   ├── src/
+│   │   │   ├── bank.rs                  # Pattern storage
+│   │   │   ├── patterns.rs              # Pattern types
+│   │   │   └── retrieval.rs             # Pattern retrieval
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-agent-db/                     # Agent context storage (Redis)
+│   │   ├── src/
+│   │   │   ├── store.rs                 # Key-value storage
+│   │   │   ├── context.rs               # Agent context
+│   │   │   └── memory.rs                # Working memory
+│   │   └── Cargo.toml
+│   │
+│   └── mg-e2b-client/                   # E2B sandbox client
+│       ├── src/
+│       │   ├── client.rs                # E2B API client
+│       │   ├── sandbox.rs               # Sandbox management
+│       │   ├── execution.rs             # Code execution
+│       │   └── templates.rs             # Custom templates
+│       └── Cargo.toml
+│
+├── LAYER 3: CONSOLIDATION (5 repos)
+│   │
+│   ├── mg-metadata-fabric/              # Global unified metadata
+│   │   ├── src/
+│   │   │   ├── fabric.rs                # Metadata aggregation
+│   │   │   ├── unified.rs               # Unified content model
+│   │   │   └── enrichment.rs            # Metadata enrichment
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-availability-index/           # Cross-platform availability
+│   │   ├── src/
+│   │   │   ├── index.rs                 # Availability index
+│   │   │   ├── regional.rs              # Regional availability
+│   │   │   └── pricing.rs               # Pricing information
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-rights-engine/                # Rights aggregation
+│   │   ├── src/
+│   │   │   ├── engine.rs                # Rights validation
+│   │   │   ├── licensing.rs             # License tracking
+│   │   │   └── expiration.rs            # Expiration alerts
+│   │   └── Cargo.toml
+│   │
+│   ├── mg-personalization-engine/       # Privacy-safe personalization
+│   │   ├── src/
+│   │   │   ├── engine.rs                # Personalization logic
+│   │   │   ├── federated.rs             # Federated learning
+│   │   │   ├── privacy.rs               # Differential privacy
+│   │   │   └── preferences.rs           # User preferences
+│   │   └── Cargo.toml
+│   │
+│   └── mg-search-api/                   # Unified search API
+│       ├── src/
+│       │   ├── api.rs                   # REST/gRPC API
+│       │   ├── handlers.rs              # Request handlers
+│       │   └── filters.rs               # Search filters
+│       └── Cargo.toml
+│
+├── LAYER 4: END-USER APPLICATIONS (6 repos)
+│   │
+│   ├── mg-cli/                          # Developer/Operator CLI
+│   │   ├── src/
+│   │   │   ├── main.rs                  # CLI entry point
+│   │   │   ├── commands/                # Command implementations
+│   │   │   ├── tui/                     # Terminal UI (ratatui)
+│   │   │   └── config.rs                # CLI configuration
+│   │   └── Cargo.toml                   # Binary crate
+│   │
+│   ├── mg-web-app/                      # Next.js web application
+│   │   ├── src/
+│   │   │   ├── app/                     # Next.js app router
+│   │   │   ├── components/              # React components
+│   │   │   └── lib/                     # Utilities
+│   │   ├── package.json
+│   │   └── README.md
+│   │
+│   ├── mg-mobile-ios/                   # iOS application (Swift)
+│   │   ├── MediaGateway/
+│   │   │   ├── Views/
+│   │   │   ├── ViewModels/
+│   │   │   └── Services/
+│   │   └── MediaGateway.xcodeproj
+│   │
+│   ├── mg-mobile-android/               # Android application (Kotlin)
+│   │   ├── app/src/main/
+│   │   │   ├── java/
+│   │   │   └── res/
+│   │   └── build.gradle.kts
+│   │
+│   ├── mg-tv-tizen/                     # Samsung Tizen app
+│   │   ├── src/
+│   │   └── config.xml
+│   │
+│   └── mg-tv-webos/                     # LG webOS app
+│       ├── src/
+│       └── appinfo.json
+│
+├── DATA LAYER (2 repos)
+│   │
+│   ├── mg-ruvector-client/              # Ruvector Rust client
+│   │   ├── src/
+│   │   │   ├── client.rs                # Main client
+│   │   │   ├── hypergraph.rs            # Hypergraph operations
+│   │   │   ├── vector.rs                # Vector operations
+│   │   │   ├── gnn.rs                   # GNN queries
+│   │   │   └── cypher.rs                # Cypher query builder
+│   │   └── Cargo.toml
+│   │
+│   └── mg-pubnub-client/                # PubNub Rust client wrapper
+│       ├── src/
+│       │   ├── client.rs                # PubNub client
+│       │   ├── channels.rs              # Channel management
+│       │   └── presence.rs              # Presence features
+│       └── Cargo.toml
+│
+├── INFRASTRUCTURE (4 repos)
+│   │
+│   ├── mg-terraform/                    # Terraform modules
+│   │   ├── modules/
+│   │   │   ├── gke/                     # GKE Autopilot
+│   │   │   ├── cloudrun/                # Cloud Run
+│   │   │   ├── cloudsql/                # Cloud SQL PostgreSQL
+│   │   │   ├── memorystore/             # Memorystore Valkey
+│   │   │   ├── pubsub/                  # Pub/Sub
+│   │   │   ├── security/                # IAM, Secrets, Armor
+│   │   │   └── observability/           # Logging, Monitoring
+│   │   ├── environments/
+│   │   │   ├── dev/
+│   │   │   ├── staging/
+│   │   │   └── prod/
+│   │   └── README.md
+│   │
+│   ├── mg-helm-charts/                  # Helm charts
+│   │   ├── charts/
+│   │   │   ├── mg-ingestion/
+│   │   │   ├── mg-intelligence/
+│   │   │   ├── mg-consolidation/
+│   │   │   └── mg-api/
+│   │   └── README.md
+│   │
+│   ├── mg-docker/                       # Dockerfiles and compose
+│   │   ├── dockerfiles/
+│   │   │   ├── rust-service.Dockerfile
+│   │   │   ├── web-app.Dockerfile
+│   │   │   └── cli.Dockerfile
+│   │   ├── docker-compose.dev.yml
+│   │   └── docker-compose.test.yml
+│   │
+│   └── mg-ci-templates/                 # Shared CI/CD templates
+│       ├── .github/
+│       │   └── workflows/
+│       │       ├── rust-build.yml
+│       │       ├── rust-test.yml
+│       │       └── deploy-gcp.yml
+│       └── README.md
+│
+├── TESTING & SIMULATION (2 repos)
+│   │
+│   ├── mg-test-utils/                   # Shared test utilities
+│   │   ├── src/
+│   │   │   ├── fixtures/                # Test fixtures
+│   │   │   ├── mocks/                   # Mock implementations
+│   │   │   └── helpers/                 # Test helpers
+│   │   └── Cargo.toml
+│   │
+│   └── mg-simulator/                    # Simulation & mock APIs
+│       ├── src/
+│       │   ├── catalog_gen.rs           # Synthetic catalog generator
+│       │   ├── mock_apis/               # Mock streaming APIs
+│       │   └── load_gen.rs              # Load testing
+│       └── Cargo.toml
+│
+└── DOCUMENTATION (1 repo)
+    │
+    └── mg-docs/                         # Documentation site
+        ├── docs/
+        │   ├── architecture/
+        │   ├── api/
+        │   ├── guides/
+        │   └── tutorials/
+        ├── docusaurus.config.js
+        └── README.md
 ```
 
-### 2.2 MCP Connector Interface (Rust)
+#### Repository Count Summary
+
+| Category | Count | Purpose |
+|----------|-------|---------|
+| **Foundation** | 3 | Proto, SDK, Config |
+| **Layer 1 - Ingestion** | 14 | MCP connectors, normalizers |
+| **Layer 1 - Identity** | 3 | Auth, tokens, sessions |
+| **Layer 1 - Device** | 3 | Gateway, sync, adapters |
+| **Layer 2 - Intelligence** | 8 | Agents, recommendations, search |
+| **Layer 3 - Consolidation** | 5 | Metadata, availability, rights |
+| **Layer 4 - Applications** | 6 | CLI, web, mobile, TV |
+| **Data Layer** | 2 | Ruvector, PubNub clients |
+| **Infrastructure** | 4 | Terraform, Helm, Docker, CI |
+| **Testing** | 2 | Test utils, simulator |
+| **Documentation** | 1 | Docs site |
+| **Total** | **51** | Complete platform |
+
+### 2.2 Dependency Graph
+
+```
+                    ┌─────────────────┐
+                    │    mg-proto     │
+                    │   (Protobuf)    │
+                    └────────┬────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  mg-sdk-rust    │
+                    │  (Core Types)   │
+                    └────────┬────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         │                   │                   │
+┌────────▼────────┐ ┌────────▼────────┐ ┌────────▼────────┐
+│mg-ingestion-core│ │mg-ruvector-client│ │  mg-e2b-client  │
+│  (Connectors)   │ │   (Data Layer)  │ │   (Sandboxes)   │
+└────────┬────────┘ └────────┬────────┘ └────────┬────────┘
+         │                   │                   │
+         │          ┌────────▼────────┐          │
+         │          │  mg-sona-client │          │
+         │          │  (Intelligence) │          │
+         │          └────────┬────────┘          │
+         │                   │                   │
+┌────────▼───────────────────▼───────────────────▼────────┐
+│                  mg-agent-orchestrator                   │
+│              (Claude-Flow + 9 Agents)                   │
+└─────────────────────────┬───────────────────────────────┘
+                          │
+         ┌────────────────┼────────────────┐
+         │                │                │
+┌────────▼────────┐ ┌─────▼─────┐ ┌────────▼────────┐
+│mg-recommendation│ │mg-semantic│ │mg-metadata-fabric│
+│    -engine      │ │  -search  │ │  (Consolidation) │
+└────────┬────────┘ └─────┬─────┘ └────────┬────────┘
+         │                │                │
+         └────────────────┼────────────────┘
+                          │
+                 ┌────────▼────────┐
+                 │   mg-search-api │
+                 │   (Unified API) │
+                 └────────┬────────┘
+                          │
+         ┌────────────────┼────────────────┐
+         │                │                │
+┌────────▼────────┐ ┌─────▼─────┐ ┌────────▼────────┐
+│     mg-cli      │ │mg-web-app │ │   mg-tv-tizen   │
+│  (Developer)    │ │ (Next.js) │ │   (Samsung)     │
+└─────────────────┘ └───────────┘ └─────────────────┘
+```
+
+### 2.3 Repository Wiring Strategy
+
+Each repository communicates via well-defined interfaces:
+
+#### Inter-Repository Communication
+
+| Communication Type | Technology | Use Case |
+|-------------------|------------|----------|
+| **Sync API Calls** | gRPC (tonic) | Service-to-service |
+| **Async Events** | Pub/Sub | Event streaming |
+| **Real-time Sync** | PubNub | Device synchronization |
+| **Shared Types** | mg-proto | Schema definitions |
+| **Client Libraries** | mg-sdk-rust | Rust integration |
+
+#### Versioning Strategy
+
+```yaml
+# Each repo follows semantic versioning
+# Breaking changes require major version bump
+# All repos publish to crates.io (Rust) or npm (TypeScript)
+
+# Example Cargo.toml dependency
+[dependencies]
+mg-sdk = "1.2.0"           # Pinned version
+mg-proto = "1.0.0"         # Stable API
+mg-ingestion-core = "0.5"  # Flexible minor
+```
+
+#### CI/CD Integration
+
+Each repository has its own CI/CD pipeline that:
+1. Runs tests on PR
+2. Publishes to package registry on merge to main
+3. Triggers dependent repos via webhook (optional)
+4. Deploys to GKE/Cloud Run via mg-terraform
+
+### 2.4 MCP Connector Interface (Rust)
 
 ```rust
 #[async_trait]
