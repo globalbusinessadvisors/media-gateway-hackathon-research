@@ -1592,7 +1592,20 @@ pub fn get_streaming_tools() -> Vec<MCPToolSchema> {
 }
 ```
 
-### 16.8 Hackathon Track Alignment
+### 16.8 Key Integration Points
+
+| hackathon-tv5 Component | Media Gateway Layer | Integration |
+|------------------------|---------------------|-------------|
+| **ARW Machine Views** | Layer-3 Metadata Fabric | 85% token reduction for content ingestion |
+| **MCP Server (6 tools)** | Layer-1 MCP Connectors | Protocol bridge for platform integration |
+| **Claude Flow (101 tools)** | Layer-2 Agent Orchestrator | Multi-agent coordination with SPARC |
+| **Agentic Flow (66 agents)** | Layer-2 Agent Orchestrator | Specialized agent workflows |
+| **RuVector** | Data Layer | Hypergraph + Vector + GNN storage |
+| **AgentDB** | Layer-2 Memory | Agent context and session state |
+| **Google ADK** | Layer-2 Agent Orchestrator | Agent development framework |
+| **Vertex AI SDK** | Layer-2 Intelligence | ML model serving integration |
+
+### 16.9 Hackathon Track Alignment
 
 | Track | Media Gateway Focus | Key Components |
 |-------|--------------------|--------------------|
