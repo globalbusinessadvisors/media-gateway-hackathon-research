@@ -5,13 +5,14 @@
 **A Global Cross-Platform TV Discovery System**
 
 [![Rust](https://img.shields.io/badge/rust-100%25-orange.svg)](https://www.rust-lang.org/)
+[![GCP](https://img.shields.io/badge/GCP-GKE%20%7C%20Cloud%20Run-4285F4.svg)](https://cloud.google.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Architecture](https://img.shields.io/badge/architecture-4--layer-green.svg)](#architecture)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 *Eliminate the 45 minutes people waste daily deciding what to watch.*
 
-[Architecture](#architecture) · [Documentation](#documentation) · [Getting Started](#getting-started) · [Contributing](#contributing)
+[Architecture](#architecture) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation) · [Getting Started](#getting-started)
 
 </div>
 
@@ -29,6 +30,7 @@ Media Gateway is a comprehensive architecture blueprint for a unified TV content
 - **Privacy-First Design** — Federated learning with differential privacy for personalization
 - **Rust-Native Performance** — 100% Rust implementation for reliability and speed
 - **CLI-First Experience** — Full-featured terminal interface with rich TUI
+- **Cloud-Native Deployment** — GKE Autopilot and Cloud Run on Google Cloud Platform
 
 ---
 
@@ -68,6 +70,143 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 | **Orchestration** | Claude-Flow | Multi-agent AI coordination (SPARC methodology) |
 | **Authentication** | OAuth2 + PKCE | Secure streaming platform authorization |
 | **Service Communication** | gRPC (tonic) | Inter-service messaging |
+| **Container Orchestration** | GKE Autopilot | Managed Kubernetes for microservices |
+| **Serverless** | Cloud Run | Auto-scaling API gateway and webhooks |
+
+---
+
+## Google Cloud Deployment
+
+Media Gateway is designed for production deployment on **Google Cloud Platform**, leveraging GKE Autopilot for container orchestration and Cloud Run for serverless components.
+
+### Infrastructure Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         GOOGLE CLOUD PLATFORM                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │              GLOBAL LOAD BALANCER + CLOUD ARMOR                      │   │
+│  │                    (WAF + DDoS Protection)                           │   │
+│  └──────────────────────────────┬──────────────────────────────────────┘   │
+│                                 │                                           │
+│  ┌──────────────────────────────┼──────────────────────────────────────┐   │
+│  │                              ▼                                       │   │
+│  │  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐     │   │
+│  │  │   Cloud Run    │    │  GKE Autopilot │    │   Cloud Run    │     │   │
+│  │  │  (API Gateway) │    │ (15+ Services) │    │   (Webhooks)   │     │   │
+│  │  └────────────────┘    └────────────────┘    └────────────────┘     │   │
+│  │                              │                                       │   │
+│  │         ISTIO SERVICE MESH + WORKLOAD IDENTITY                      │   │
+│  └──────────────────────────────┼──────────────────────────────────────┘   │
+│                                 │                                           │
+│  ┌──────────────────────────────┼──────────────────────────────────────┐   │
+│  │                              ▼                                       │   │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐         │   │
+│  │  │   Cloud SQL    │  │  Memorystore   │  │    Pub/Sub     │         │   │
+│  │  │  PostgreSQL 15 │  │    Valkey      │  │    Topics      │         │   │
+│  │  └────────────────┘  └────────────────┘  └────────────────┘         │   │
+│  │                                                                      │   │
+│  │              PRIVATE VPC + PRIVATE SERVICE ACCESS                   │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  OBSERVABILITY: Cloud Logging │ Cloud Trace │ Cloud Monitoring       │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  CI/CD: Cloud Build │ Artifact Registry │ Cloud Deploy │ Secret Mgr │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### GCP Services
+
+| Service | Purpose | Configuration |
+|---------|---------|---------------|
+| **GKE Autopilot** | Container orchestration for 15+ microservices | Regional, Workload Identity enabled |
+| **Cloud Run** | Stateless API gateway and webhook handlers | Auto-scaling, VPC connector |
+| **Cloud SQL** | PostgreSQL 15 with HA | Private IP, Point-in-time recovery |
+| **Memorystore** | Redis-compatible caching (Valkey) | 10GB, Standard HA, Read replicas |
+| **Pub/Sub** | Event streaming between services | Schema enforcement, Dead letter queues |
+| **Cloud Armor** | WAF and DDoS protection | Adaptive protection, Rate limiting |
+| **Secret Manager** | Credential management | Automatic rotation, IAM integration |
+| **Artifact Registry** | Container image storage | Vulnerability scanning |
+| **Cloud Build** | CI/CD pipeline | Multi-stage Rust builds |
+| **Cloud Deploy** | Kubernetes deployment automation | Progressive rollouts |
+
+### Deployment Patterns
+
+**GKE Autopilot** hosts the core microservices:
+- Layer 1: Ingestion, Auth, Sync Engine, Entity Resolver
+- Layer 2: Recommendation Engine, Agent Orchestrator, Semantic Search
+- Layer 3: Metadata Fabric, Availability Index, Rights Engine
+
+**Cloud Run** hosts stateless components:
+- API Gateway (public-facing)
+- Webhook Handlers (Pub/Sub push)
+- Batch Jobs (scheduled via Cloud Scheduler)
+
+### Infrastructure as Code
+
+All GCP resources are provisioned via **Terraform** modules:
+
+```
+terraform/
+├── environments/
+│   ├── dev/
+│   ├── staging/
+│   └── prod/
+└── modules/
+    ├── gke/           # GKE Autopilot cluster
+    ├── cloudrun/      # Cloud Run services
+    ├── database/      # Cloud SQL PostgreSQL
+    ├── cache/         # Memorystore Valkey
+    ├── pubsub/        # Pub/Sub topics and subscriptions
+    ├── security/      # Workload Identity, Cloud Armor, Secrets
+    ├── network/       # VPC, Subnets, Firewall
+    └── observability/ # Logging, Monitoring, Alerting
+```
+
+### Quick Deploy
+
+```bash
+# Initialize Terraform
+cd terraform/environments/dev
+terraform init
+
+# Plan and apply
+terraform plan -out=tfplan
+terraform apply tfplan
+
+# Get GKE credentials
+gcloud container clusters get-credentials media-gateway-cluster --region us-central1
+
+# Deploy services
+kubectl apply -f k8s/namespaces.yaml
+kubectl apply -f k8s/layer1/
+kubectl apply -f k8s/layer2/
+kubectl apply -f k8s/layer3/
+
+# Deploy Cloud Run
+gcloud run deploy api-gateway \
+  --image us-central1-docker.pkg.dev/PROJECT_ID/media-gateway/api-gateway:latest \
+  --region us-central1
+```
+
+### Estimated Costs
+
+| Component | Monthly Estimate |
+|-----------|-----------------|
+| GKE Autopilot (15 services) | $800-1,200 |
+| Cloud Run (API + Webhooks) | $200-400 |
+| Cloud SQL (HA, 4 vCPU) | $400-500 |
+| Memorystore (10GB HA) | $300-350 |
+| Pub/Sub (10M msgs) | $50-100 |
+| Other (Armor, Logging, etc.) | $100-150 |
+| **Total** | **$1,850-2,700** |
 
 ---
 
@@ -80,6 +219,7 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 | [`FINAL_ARCHITECTURE_BLUEPRINT.md`](research/FINAL_ARCHITECTURE_BLUEPRINT.md) | Complete 17-section system architecture |
 | [`ARCHITECTURE_BLUEPRINT.md`](research/ARCHITECTURE_BLUEPRINT.md) | Core architecture design and patterns |
 | [`streaming-platform-research.md`](research/streaming-platform-research.md) | API analysis for 10+ streaming platforms |
+| [`GCP_DEPLOYMENT_ARCHITECTURE.md`](research/GCP_DEPLOYMENT_ARCHITECTURE.md) | Google Cloud deployment guide with Terraform |
 
 ### Component Specifications
 
@@ -107,13 +247,15 @@ Media Gateway implements a **4-layer architecture** designed for scalability, mo
 media-gateway/
 ├── research/                    # Architecture documentation
 │   ├── FINAL_ARCHITECTURE_BLUEPRINT.md
+│   ├── GCP_DEPLOYMENT_ARCHITECTURE.md
 │   ├── ARCHITECTURE_BLUEPRINT.md
 │   ├── streaming-platform-research.md
 │   ├── RUVECTOR_KNOWLEDGE_GRAPH_SPEC.md
-│   ├── RECOMMENDATION_ENGINE_SPEC.md
-│   ├── MCP_PROTOCOL_SPECIFICATION.md
-│   ├── CLI_ARCHITECTURE_SPECIFICATION.md
 │   └── ...
+├── terraform/                   # Infrastructure as Code (planned)
+│   ├── environments/
+│   └── modules/
+├── k8s/                         # Kubernetes manifests (planned)
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -148,9 +290,10 @@ tv-discovery/
 │   ├── web-app/                 # Next.js web client
 │   └── tv-apps/                 # Samsung Tizen, LG webOS, Roku
 └── infrastructure/
+    ├── terraform/               # GCP infrastructure
+    ├── k8s/                     # Kubernetes manifests
     ├── proto/                   # gRPC definitions
-    ├── sdk-rust/                # Rust SDK
-    └── deploy/                  # Kubernetes, Helm, Terraform
+    └── sdk-rust/                # Rust SDK
 ```
 
 ---
@@ -197,11 +340,14 @@ Three-tier data architecture:
 
 ### Prerequisites
 
-- Rust 1.75+ (for implementation)
-- Docker & Docker Compose (for local development)
+- Rust 1.75+
+- Docker & Docker Compose
+- Google Cloud SDK (`gcloud`)
+- Terraform 1.5+
+- kubectl
 - Access to aggregator APIs (JustWatch, Watchmode, or Streaming Availability)
 
-### Quick Start
+### Local Development
 
 ```bash
 # Clone the repository
@@ -211,8 +357,31 @@ cd media-gateway
 # Review the architecture
 cat research/FINAL_ARCHITECTURE_BLUEPRINT.md
 
-# Start with the CLI specification
-cat research/CLI_ARCHITECTURE_SPECIFICATION.md
+# Review GCP deployment
+cat research/GCP_DEPLOYMENT_ARCHITECTURE.md
+```
+
+### GCP Setup
+
+```bash
+# Authenticate with GCP
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Enable required APIs
+gcloud services enable \
+  container.googleapis.com \
+  run.googleapis.com \
+  sqladmin.googleapis.com \
+  redis.googleapis.com \
+  pubsub.googleapis.com \
+  secretmanager.googleapis.com \
+  cloudbuild.googleapis.com \
+  artifactregistry.googleapis.com
+
+# Initialize Terraform
+cd terraform/environments/dev
+terraform init
 ```
 
 ---
@@ -224,13 +393,16 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ### Development Process
 
 1. Review the [Architecture Blueprint](research/FINAL_ARCHITECTURE_BLUEPRINT.md)
-2. Check the [Implementation Roadmap](research/CLI_IMPLEMENTATION_ROADMAP.md)
-3. Pick an unassigned component from the roadmap
-4. Submit a PR with tests and documentation
+2. Review the [GCP Deployment Guide](research/GCP_DEPLOYMENT_ARCHITECTURE.md)
+3. Check the [Implementation Roadmap](research/CLI_IMPLEMENTATION_ROADMAP.md)
+4. Pick an unassigned component from the roadmap
+5. Submit a PR with tests and documentation
 
 ### Code Style
 
 - Rust: Follow `rustfmt` and `clippy` recommendations
+- Terraform: Follow HashiCorp style guide
+- Kubernetes: Use `kubectl diff` before applying
 - Documentation: Markdown with Mermaid diagrams where applicable
 - Commits: Conventional Commits format
 
@@ -243,21 +415,25 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - [ ] Ruvector client library and schema
 - [ ] Authentication service (OAuth2/PKCE + Device Grant)
 - [ ] CLI core with TUI framework
+- [ ] GCP infrastructure (Terraform modules)
 
 ### Phase 2: Intelligence
 - [ ] Recommendation engine with GraphSAGE
 - [ ] Semantic search and embeddings
 - [ ] Multi-agent orchestration (Claude-Flow)
+- [ ] GKE deployment with Istio
 
 ### Phase 3: Integration
 - [ ] Cross-device sync (PubNub + CRDT)
 - [ ] Platform-specific MCP connectors
 - [ ] Rights validation engine
+- [ ] Cloud Run API gateway
 
 ### Phase 4: Experience
 - [ ] Production CLI application
 - [ ] Web application (Next.js)
 - [ ] Smart TV applications
+- [ ] Cloud Deploy pipelines
 
 ---
 
@@ -269,6 +445,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ## Acknowledgments
 
+- **Google Cloud Platform** — Infrastructure and managed services
 - **Ruvector** — Hypergraph and vector database engine
 - **PubNub** — Real-time messaging infrastructure
 - **Claude-Flow** — Multi-agent orchestration framework
@@ -278,6 +455,6 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 <div align="center">
 
-**[Documentation](research/) · [Issues](https://github.com/globalbusinessadvisors/media-gateway/issues) · [Discussions](https://github.com/globalbusinessadvisors/media-gateway/discussions)**
+**[Documentation](research/) · [GCP Guide](research/GCP_DEPLOYMENT_ARCHITECTURE.md) · [Issues](https://github.com/globalbusinessadvisors/media-gateway/issues) · [Discussions](https://github.com/globalbusinessadvisors/media-gateway/discussions)**
 
 </div>
