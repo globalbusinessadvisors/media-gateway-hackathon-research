@@ -5,6 +5,7 @@
 **A Global Cross-Platform TV Discovery System**
 
 [![Rust](https://img.shields.io/badge/rust-100%25-orange.svg)](https://www.rust-lang.org/)
+[![Repositories](https://img.shields.io/badge/repos-51%20micro--repos-blue.svg)](#multi-repository-architecture)
 [![hackathon-tv5](https://img.shields.io/badge/hackathon--tv5-Agentics%20Foundation-00A67E.svg)](https://github.com/agenticsorg/hackathon-tv5)
 [![E2B](https://img.shields.io/badge/E2B-Sandboxed%20Agents-FF6B35.svg)](https://e2b.dev)
 [![GCP](https://img.shields.io/badge/GCP-GKE%20%7C%20Cloud%20Run-4285F4.svg)](https://cloud.google.com/)
@@ -15,7 +16,7 @@
 
 *Eliminate the 45 minutes people waste daily deciding what to watch.*
 
-[Architecture](#architecture) · [hackathon-tv5](#hackathon-tv5-integration) · [E2B Sandboxes](#e2b-sandbox-integration) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation)
+[Architecture](#architecture) · [51 Repositories](#multi-repository-architecture) · [hackathon-tv5](#hackathon-tv5-integration) · [E2B Sandboxes](#e2b-sandbox-integration) · [SONA Intelligence](#sona-intelligence-engine) · [GCP Deployment](#google-cloud-deployment) · [Documentation](#documentation)
 
 </div>
 
@@ -27,6 +28,7 @@ Media Gateway is a comprehensive architecture blueprint for a unified TV content
 
 ### Key Features
 
+- **51 Micro-Repositories** — Independent versioning, separate CI/CD, parallel development across teams
 - **Unified Content Discovery** — Search across 10+ streaming platforms simultaneously
 - **Intelligent Recommendations** — Hybrid engine combining collaborative filtering, content-based analysis, and Graph Neural Networks
 - **hackathon-tv5 Integration** — Built on Agentics Foundation toolkit with ARW specification and 17+ tools
@@ -537,14 +539,126 @@ github.com/globalbusinessadvisors/
 #### Dependency Flow
 
 ```
-mg-proto → mg-sdk-rust → mg-ingestion-core → mg-connector-*
-                      ↓
-              mg-ruvector-client → mg-sona-client
-                      ↓
-              mg-agent-orchestrator → mg-recommendation-engine
-                      ↓
-              mg-search-api → mg-cli / mg-web-app / mg-tv-*
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         REPOSITORY DEPENDENCY GRAPH                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  BUILD ORDER (Foundation → Services → Applications)                         │
+│                                                                              │
+│  ┌─────────────┐                                                            │
+│  │  mg-proto   │ ◄── Build first (Protobuf schemas)                         │
+│  └──────┬──────┘                                                            │
+│         │                                                                    │
+│  ┌──────▼──────┐                                                            │
+│  │ mg-sdk-rust │ ◄── Core types, traits, utilities                          │
+│  └──────┬──────┘                                                            │
+│         │                                                                    │
+│  ┌──────┴──────────────────────────────────────┐                            │
+│  │                                              │                            │
+│  ▼                                              ▼                            │
+│  ┌─────────────────┐              ┌─────────────────┐                       │
+│  │mg-ingestion-core│              │mg-ruvector-client│                       │
+│  └────────┬────────┘              └────────┬────────┘                       │
+│           │                                │                                 │
+│  ┌────────┴────────┐              ┌────────▼────────┐                       │
+│  │ mg-connector-*  │              │  mg-sona-client │                       │
+│  │ (10+ platforms) │              └────────┬────────┘                       │
+│  └────────┬────────┘                       │                                 │
+│           │                                │                                 │
+│           └────────────┬───────────────────┘                                │
+│                        │                                                     │
+│               ┌────────▼────────┐                                           │
+│               │mg-agent-        │                                           │
+│               │orchestrator     │ ◄── 9 specialized agents                  │
+│               └────────┬────────┘                                           │
+│                        │                                                     │
+│  ┌─────────────────────┼─────────────────────┐                              │
+│  │                     │                     │                              │
+│  ▼                     ▼                     ▼                              │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                        │
+│  │mg-recommend- │ │mg-semantic-  │ │mg-metadata-  │                        │
+│  │ation-engine  │ │search        │ │fabric        │                        │
+│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘                        │
+│         │                │                │                                 │
+│         └────────────────┼────────────────┘                                │
+│                          │                                                  │
+│                 ┌────────▼────────┐                                        │
+│                 │  mg-search-api  │ ◄── Unified API gateway                │
+│                 └────────┬────────┘                                        │
+│                          │                                                  │
+│  ┌───────────────────────┼───────────────────────┐                         │
+│  │                       │                       │                         │
+│  ▼                       ▼                       ▼                         │
+│  ┌──────────┐    ┌──────────────┐    ┌──────────────┐                     │
+│  │  mg-cli  │    │  mg-web-app  │    │ mg-tv-tizen  │                     │
+│  └──────────┘    └──────────────┘    └──────────────┘                     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
+
+#### Inter-Repository Communication
+
+| Method | Technology | Use Case |
+|--------|------------|----------|
+| **Sync RPC** | gRPC (tonic) | Service-to-service calls |
+| **Async Events** | Google Pub/Sub | Event streaming, notifications |
+| **Real-time** | PubNub | Device sync, presence |
+| **Shared Types** | mg-proto crate | Schema definitions |
+| **Client SDK** | mg-sdk-rust crate | Common utilities |
+
+#### Versioning Strategy
+
+All repositories follow **semantic versioning** and publish to crates.io (Rust) or npm (TypeScript):
+
+```toml
+# Example Cargo.toml for a service repository
+[package]
+name = "mg-recommendation-engine"
+version = "0.1.0"
+
+[dependencies]
+mg-sdk = "1.0"              # Core SDK
+mg-proto = "1.0"            # Protobuf types
+mg-ruvector-client = "0.5"  # Data layer
+mg-sona-client = "0.3"      # Intelligence
+```
+
+#### Build Order for New Developers
+
+```bash
+# 1. Clone and build foundation repos first
+git clone https://github.com/globalbusinessadvisors/mg-proto.git
+cd mg-proto && cargo build && cargo publish --dry-run
+
+git clone https://github.com/globalbusinessadvisors/mg-sdk-rust.git
+cd mg-sdk-rust && cargo build && cargo publish --dry-run
+
+# 2. Build data layer clients
+git clone https://github.com/globalbusinessadvisors/mg-ruvector-client.git
+git clone https://github.com/globalbusinessadvisors/mg-pubnub-client.git
+
+# 3. Build your target service (e.g., recommendation engine)
+git clone https://github.com/globalbusinessadvisors/mg-recommendation-engine.git
+cd mg-recommendation-engine && cargo build
+
+# 4. Or use the dev environment with all services
+git clone https://github.com/globalbusinessadvisors/mg-docker.git
+cd mg-docker && docker-compose -f docker-compose.dev.yml up
+```
+
+#### Repository Links
+
+| Repository | Purpose | Status |
+|------------|---------|--------|
+| `mg-proto` | Protobuf schemas | 🔜 Planned |
+| `mg-sdk-rust` | Core Rust SDK | 🔜 Planned |
+| `mg-ingestion-core` | MCP connector framework | 🔜 Planned |
+| `mg-agent-orchestrator` | Claude-Flow + 9 agents | 🔜 Planned |
+| `mg-recommendation-engine` | Hybrid GNN recommendations | 🔜 Planned |
+| `mg-search-api` | Unified search API | 🔜 Planned |
+| `mg-cli` | Developer CLI | 🔜 Planned |
+| `mg-web-app` | Next.js web app | 🔜 Planned |
+| `mg-terraform` | GCP infrastructure | 🔜 Planned |
 
 ---
 
